@@ -1,0 +1,46 @@
+{
+    "$schema": "https://schema.tauri.app/config/1",
+    "build": {
+      "beforeDevCommand": "npm run dev",
+      "beforeBuildCommand": "npm run build"
+    },
+    "package": {
+      "productName": "LocalReads",
+      "version": "0.1.0"
+    },
+    "tauri": {
+      "bundle": {
+        "active": true,
+        "identifier": "app.localreads"
+      },
+      "allowlist": {
+        "all": false,
+        "dialog": { "open": true },
+        "fs": {
+          "readFile": true,
+          "writeFile": true,
+          "createDir": true
+        },
+        "path": { "all": true }
+      },
+      "plugins": {
+        "sql": {
+          "default": {
+            "db-name": "localreads.sqlite",
+            "path": "App",
+            "load": true
+          }
+        }
+      },
+      "security": { "csp": null },
+      "windows": [
+        {
+          "title": "LocalReads",
+          "fullscreen": false,
+          "resizable": true,
+          "width": 1200,
+          "height": 800
+        }
+      ]
+    }
+  }

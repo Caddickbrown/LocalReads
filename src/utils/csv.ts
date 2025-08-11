@@ -1,0 +1,1 @@
+export const csvEscape = (s: string) => '"' + s.replaceAll('"', '""') + '"'
