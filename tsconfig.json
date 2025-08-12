@@ -9,7 +9,16 @@
       "baseUrl": ".",
       "paths": {
         "@/*": ["src/*"]
-      }
+      },
+      "allowSyntheticDefaultImports": true,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "forceConsistentCasingInFileNames": true,
+      "resolveJsonModule": true,
+      "isolatedModules": true,
+      "noEmit": true,
+      "incremental": true
     },
-    "include": ["src"]
+    "include": ["src", "src-tauri"],
+    "exclude": ["node_modules", "dist"]
   }

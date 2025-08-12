@@ -3,16 +3,13 @@ import Library from '@/components/Library'
 import Dashboard from '@/components/Dashboard'
 import Highlights from '@/components/Highlights'
 import Settings from '@/components/Settings'
-import { execSchema } from '@/db/client'
-import schema from '@/db/schema.sql?raw'
+// import UpdateNotification from '@/components/UpdateNotification'
 import { useTheme } from '@/hooks/useTheme'
 
 export default function App(){
   const { dark, mode, setMode } = useTheme()
   const [view, setView] = useState<'library'|'dashboard'|'highlights'|'settings'>('library')
   const [refresh, setRefresh] = useState(0)
-
-  useEffect(()=>{ (async()=>{ await execSchema(schema) })() }, [])
 
   return (
     <div className={dark ? 'dark' : ''}>
@@ -31,6 +28,9 @@ export default function App(){
           {view==='settings' && <Settings mode={mode} setMode={setMode} onBack={()=>setView('library')} />}
         </div>
       </div>
+      
+      {/* Auto-update notification */}
+      {/* <UpdateNotification /> */}
     </div>
   )
 }

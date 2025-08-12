@@ -67,10 +67,11 @@ export async function upsertBook(b: Partial<Book> & { id?: string }) {
   const id = b.id || uid()
   await db.execute(
     `INSERT INTO books (id, title, author, series_name, series_number, obtained, type, status)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
-       title=$2, author=$3, series_name=$4, series_number=$5, obtained=$6, type=$7, status=$8`,
-    [id, b.title, b.author, b.series_name ?? null, b.series_number ?? null, b.obtained ?? null, b.type, b.status]
+       title=?, author=?, series_name=?, series_number=?, obtained=?, type=?, status=?`,
+    [id, b.title, b.author, b.series_name ?? null, b.series_number ?? null, b.obtained ?? null, b.type, b.status,
+     b.title, b.author, b.series_name ?? null, b.series_number ?? null, b.obtained ?? null, b.type, b.status]
   )
   return id
 }
@@ -105,16 +106,19 @@ export async function upsertRead(r: Partial<Read> & { id?: string, book_id: stri
   const id = r.id || uid()
   await db.execute(
     `INSERT INTO reads (id, book_id, start_date, end_date, rating, review)
-     VALUES ($1,$2,$3,$4,$5,$6)
-     ON CONFLICT(id) DO UPDATE SET start_date=$3, end_date=$4, rating=$5, review=$6`,
-    [id, r.book_id, r.start_date ?? null, r.end_date ?? null, r.rating ?? null, r.review ?? null]
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET start_date=?, end_date=?, rating=?, review=?`,
+    [id, r.book_id, r.start_date ?? null, r.end_date ?? null, r.rating ?? null, r.review ?? null,
+     r.start_date ?? null, r.end_date ?? null, r.rating ?? null, r.review ?? null]
   )
   return id
 }
+
 export async function deleteRead(id: string) {
   const db = await getDb()
   await db.execute(`DELETE FROM reads WHERE id = ?`, [id])
 }
+
 export async function readsForBook(bookId: string): Promise<Read[]> {
   const db = await getDb()
   return db.select(`SELECT * FROM reads WHERE book_id = ? ORDER BY COALESCE(end_date, start_date) DESC`, [bookId])
@@ -125,13 +129,17 @@ export async function highlightsForBook(bookId: string) {
   const db = await getDb()
   return db.select(`SELECT * FROM highlights WHERE book_id = ? ORDER BY rowid DESC`, [bookId])
 }
+
 export async function addHighlight(bookId: string, text: string) {
-  const db = await getDb(); const id = uid()
-  await db.execute(`INSERT INTO highlights (id, book_id, text) VALUES (?,?,?)`, [id, bookId, text])
+  const db = await getDb()
+  const id = uid()
+  await db.execute(`INSERT INTO highlights (id, book_id, text) VALUES (?, ?, ?)`, [id, bookId, text])
   return id
 }
+
 export async function deleteHighlight(id: string) {
-  const db = await getDb(); await db.execute(`DELETE FROM highlights WHERE id = ?`, [id])
+  const db = await getDb()
+  await db.execute(`DELETE FROM highlights WHERE id = ?`, [id])
 }
 
 // -------- Stats --------
