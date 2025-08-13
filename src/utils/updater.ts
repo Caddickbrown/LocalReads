@@ -1,5 +1,24 @@
-import { checkUpdate, installUpdate } from '@tauri-apps/api/updater'
-import { relaunch } from '@tauri-apps/api/process'
+// Optional: These imports are only available in the Tauri runtime.
+// To avoid hard failures in web builds, resolve them dynamically at runtime.
+let checkUpdate: any
+let installUpdate: any
+let relaunch: any
+
+async function loadTauriUpdater() {
+  if (typeof window === 'undefined' || !(window as any).__TAURI_INTERNALS__) return false
+  try {
+    // @ts-ignore - runtime loaded
+    const updater = await import('@tauri-apps/api/updater')
+    // @ts-ignore - runtime loaded
+    const processApi = await import('@tauri-apps/api/process')
+    checkUpdate = updater.checkUpdate
+    installUpdate = updater.installUpdate
+    relaunch = processApi.relaunch
+    return true
+  } catch {
+    return false
+  }
+}
 
 export interface UpdateInfo {
   version: string
@@ -26,6 +45,10 @@ export class AutoUpdater {
 
     try {
       this.isChecking = true
+      const ready = await loadTauriUpdater()
+      if (!ready) {
+        return null
+      }
       const update = await checkUpdate()
       
       if (update.available) {
@@ -53,6 +76,8 @@ export class AutoUpdater {
     }
 
     try {
+      const ready = await loadTauriUpdater()
+      if (!ready) return false
       await installUpdate()
       await relaunch()
       return true

@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { X, Save, BookOpen, User, Hash, Tag, Download, Upload } from 'lucide-react'
 import type { Book, Read } from '@/types'
 import { BOOK_TYPES, STATUSES } from '@/types'
-import { upsertBook, upsertRead, setTagsForBook, readsForBook, searchAuthors, searchSeries, searchTags, deleteRead } from '@/db/repo'
-import { Input, Textarea, Button, Card, CardHeader, CardContent, Select, ModalBackdrop, Spinner } from './ui'
+import { upsertBook, upsertRead, setTagsForBook, readsForBook, searchAuthors, searchSeries, searchTags, deleteRead, tagsForBook } from '@/db/repo'
+import { Input, Textarea, Button, Card, CardHeader, CardContent, Select, ModalBackdrop, Spinner, ProgressBar } from './ui'
 
 interface EditDialogProps {
   book?: Book | null
@@ -20,7 +20,8 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
     series_number: null,
     obtained: null,
     type: 'Book',
-    status: 'To Read'
+    status: 'To Read',
+    next_up_priority: false
   })
   
   const [tags, setTags] = useState<string[]>([])
@@ -30,7 +31,10 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
     end_date: '',
     rating: undefined,
     review: '',
-    format: undefined
+    format: undefined,
+    current_page: undefined,
+    total_pages: undefined,
+    progress_percentage: undefined
   })
   const [reads, setReads] = useState<Read[]>([])
   const [editingReadId, setEditingReadId] = useState<string | null>(null)
@@ -64,12 +68,15 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
           end_date: latestRead.end_date || '',
           rating: latestRead.rating || undefined,
           review: latestRead.review || '',
-          format: latestRead.format || undefined
+          format: latestRead.format || undefined,
+          current_page: latestRead.current_page || undefined,
+          total_pages: latestRead.total_pages || undefined,
+          progress_percentage: latestRead.progress_percentage || undefined
         })
         setEditingReadId(latestRead.id)
       } else {
         setEditingReadId(null)
-        setReadData({ start_date: '', end_date: '', rating: undefined, review: '', format: undefined })
+        setReadData({ start_date: '', end_date: '', rating: undefined, review: '', format: undefined, current_page: undefined, total_pages: undefined, progress_percentage: undefined })
       }
     } catch (error) {
       console.error('Error loading read data:', error)
@@ -78,8 +85,8 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
 
   const loadTags = async (bookId: string) => {
     try {
-      // This would need to be implemented in repo.ts
-      // For now, we'll handle tags through the form
+      const current = await tagsForBook(bookId)
+      setTags(current)
     } catch (error) {
       console.error('Error loading tags:', error)
     }
@@ -89,27 +96,31 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
   // typeahead search (debounced)
+  const [authorFocused, setAuthorFocused] = useState(false)
+  const [seriesFocused, setSeriesFocused] = useState(false)
   useEffect(() => {
     const t = setTimeout(async () => {
       try {
+        if (!authorFocused) { setAuthorSuggestions([]); return }
         const q = (formData.author || '').trim()
         if (q) setAuthorSuggestions(await searchAuthors(q))
         else setAuthorSuggestions([])
       } catch {}
     }, 200)
     return () => clearTimeout(t)
-  }, [formData.author])
+  }, [formData.author, authorFocused])
 
   useEffect(() => {
     const t = setTimeout(async () => {
       try {
+        if (!seriesFocused) { setSeriesSuggestions([]); return }
         const q = (formData.series_name || '').trim()
         if (q) setSeriesSuggestions(await searchSeries(q))
         else setSeriesSuggestions([])
       } catch {}
     }, 200)
     return () => clearTimeout(t)
-  }, [formData.series_name])
+  }, [formData.series_name, seriesFocused])
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -167,6 +178,8 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
       onSave()
       // also signal a library refresh in case the parent is not mounted
       window.dispatchEvent(new CustomEvent('refresh-library'))
+      // and refresh gems list if open
+      window.dispatchEvent(new CustomEvent('refresh-gems'))
       onClose()
     } catch (error: any) {
       console.error('Error saving book:', error)
@@ -231,6 +244,8 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
               <Input
                 value={formData.author || ''}
                 onChange={(e) => handleInputChange('author', e.target.value)}
+                onFocus={() => setAuthorFocused(true)}
+                onBlur={() => setTimeout(() => setAuthorFocused(false), 150)}
                 onKeyDown={(e)=>{ if(e.key==='Enter'){ e.preventDefault(); handleSubmit(e as any)} }}
                 placeholder="Author name"
                 required
@@ -254,6 +269,8 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
               <Input
                 value={formData.series_name || ''}
                 onChange={(e) => handleInputChange('series_name', e.target.value)}
+                onFocus={() => setSeriesFocused(true)}
+                onBlur={() => setTimeout(() => setSeriesFocused(false), 150)}
                 placeholder="Series name (optional)"
               />
               {seriesSuggestions.length > 0 && (
@@ -282,18 +299,6 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
           {/* Book Details */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Type</label>
-              <Select
-                value={formData.type || 'Book'}
-                onChange={(e) => handleInputChange('type', e.target.value)}
-              >
-                {BOOK_TYPES.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </Select>
-            </div>
-            
-            <div>
               <label className="block text-sm font-medium mb-2">Status</label>
               <Select
                 value={formData.status || 'To Read'}
@@ -303,6 +308,22 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
                   <option key={status} value={status}>{status}</option>
                 ))}
               </Select>
+            </div>
+            
+            {/* Next Up Priority Checkbox */}
+            <div>
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={formData.next_up_priority || false}
+                  onChange={(e) => handleInputChange('next_up_priority', e.target.checked)}
+                  className="w-4 h-4 text-indigo-600 border-zinc-300 rounded focus:ring-indigo-500 focus:ring-2"
+                />
+                <span>⭐ Mark as Next Up Priority</span>
+              </label>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 ml-7">
+                Books marked as Next Up will always appear at the top of your reading queue
+              </p>
             </div>
             
             <div>
@@ -445,6 +466,74 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
                 </Select>
               </div>
             </div>
+
+            {/* Progress Tracking Section */}
+            {(formData.status === 'Reading' || formData.status === 'Paused' || readData.current_page || readData.total_pages) && (
+              <div className="mt-4 p-3 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950">
+                <h4 className="text-sm font-medium text-indigo-900 dark:text-indigo-100 mb-3">Reading Progress</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs text-zinc-600 dark:text-zinc-400 mb-1">Current Page</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={readData.current_page || ''}
+                      onChange={(e) => {
+                        const current = parseInt(e.target.value) || 0
+                        const total = readData.total_pages || 0
+                        const percentage = total > 0 ? Math.round((current / total) * 100) : 0
+                        handleReadChange('current_page', current)
+                        handleReadChange('progress_percentage', percentage)
+                      }}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-600 dark:text-zinc-400 mb-1">Total Pages</label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={readData.total_pages || ''}
+                      onChange={(e) => {
+                        const total = parseInt(e.target.value) || 0
+                        const current = readData.current_page || 0
+                        const percentage = total > 0 ? Math.round((current / total) * 100) : 0
+                        handleReadChange('total_pages', total)
+                        handleReadChange('progress_percentage', percentage)
+                      }}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-600 dark:text-zinc-400 mb-1">Progress %</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={readData.progress_percentage || ''}
+                      onChange={(e) => {
+                        const percentage = parseInt(e.target.value) || 0
+                        const total = readData.total_pages || 0
+                        const current = total > 0 ? Math.round((percentage / 100) * total) : 0
+                        handleReadChange('progress_percentage', percentage)
+                        handleReadChange('current_page', current)
+                      }}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                {(readData.progress_percentage || 0) > 0 && (
+                  <div className="mt-3">
+                    <ProgressBar 
+                      value={readData.progress_percentage || 0} 
+                      showLabel={false}
+                      size="sm"
+                      color="primary"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
             
             <div className="mt-4">
               <label className="block text-xs text-zinc-600 dark:text-zinc-400 mb-1">Review</label>

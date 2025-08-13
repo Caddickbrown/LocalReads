@@ -7,7 +7,7 @@ export const Input: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { cla
 }) => (
   <input 
     {...props} 
-    className={`w-full px-3 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 outline-none focus:ring-2 ring-zinc-300 dark:ring-zinc-700 transition-colors ${className}`} 
+    className={`w-full px-3 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 outline-none focus:ring-2 ring-zinc-300 dark:ring-zinc-700 transition-colors ${className}`} 
   />
 )
 
@@ -18,7 +18,7 @@ export const Textarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement
 }) => (
   <textarea 
     {...props} 
-    className={`w-full px-3 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 outline-none focus:ring-2 ring-zinc-300 dark:ring-zinc-700 transition-colors ${className}`} 
+    className={`w-full px-3 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 outline-none focus:ring-2 ring-zinc-300 dark:ring-zinc-700 transition-colors ${className}`} 
   />
 )
 
@@ -64,7 +64,7 @@ export const Card: React.FC<React.PropsWithChildren<{ className?: string }>> = (
   children, 
   className = '' 
 }) => (
-  <div className={`rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm card ${className}`}>
+  <div className={`rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 shadow-sm card ${className}`}>
     {children}
   </div>
 )
@@ -129,7 +129,7 @@ export const Select: React.FC<React.SelectHTMLAttributes<HTMLSelectElement> & { 
 }) => (
   <select 
     {...props} 
-    className={`w-full px-3 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 outline-none focus:ring-2 ring-zinc-300 dark:ring-zinc-700 transition-colors ${className}`}
+    className={`w-full px-3 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 outline-none focus:ring-2 ring-zinc-300 dark:ring-zinc-700 transition-colors ${className}`}
   >
     {children}
   </select>
@@ -168,24 +168,208 @@ export const Spinner: React.FC<{ className?: string; size?: 'sm' | 'md' | 'lg' }
   )
 }
 
-// Empty state component
+// Enhanced empty state component with illustrations and helpful tips
 export const EmptyState: React.FC<{ 
   icon?: React.ReactNode
   title: string
   description?: string
   action?: React.ReactNode
   className?: string
+  tips?: string[]
+  illustration?: 'books' | 'search' | 'highlights' | 'dashboard' | 'default'
 }> = ({ 
   icon, 
   title, 
   description, 
   action, 
-  className = '' 
-}) => (
-  <div className={`text-center py-12 empty-state ${className}`}>
-    {icon && <div className="mx-auto w-12 h-12 text-zinc-400 mb-4">{icon}</div>}
-    <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-2">{title}</h3>
-    {description && <p className="text-zinc-600 dark:text-zinc-400 mb-6">{description}</p>}
-    {action && <div>{action}</div>}
-  </div>
-)
+  className = '',
+  tips = [],
+  illustration = 'default'
+}) => {
+  // Simple ASCII-style illustrations
+  const illustrations = {
+    books: (
+      <div className="text-6xl mb-4 opacity-20 select-none font-mono leading-none">
+        📚<br/>
+        📖 📕
+      </div>
+    ),
+    search: (
+      <div className="text-6xl mb-4 opacity-20 select-none font-mono leading-none">
+        🔍<br/>
+        📄 📄
+      </div>
+    ),
+    highlights: (
+      <div className="text-6xl mb-4 opacity-20 select-none font-mono leading-none">
+        ✨<br/>
+        📝 💭
+      </div>
+    ),
+    dashboard: (
+      <div className="text-6xl mb-4 opacity-20 select-none font-mono leading-none">
+        📊<br/>
+        📈 📉
+      </div>
+    ),
+    default: null
+  }
+
+  return (
+    <div className={`text-center py-16 empty-state ${className}`}>
+      {/* Illustration */}
+      {illustrations[illustration]}
+      
+      {/* Icon (fallback if no illustration) */}
+      {!illustrations[illustration] && icon && (
+        <div className="mx-auto w-16 h-16 text-zinc-300 dark:text-zinc-600 mb-6 flex items-center justify-center">
+          {icon}
+        </div>
+      )}
+      
+      {/* Title */}
+      <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-3">{title}</h3>
+      
+      {/* Description */}
+      {description && (
+        <p className="text-zinc-600 dark:text-zinc-400 mb-6 max-w-md mx-auto leading-relaxed">
+          {description}
+        </p>
+      )}
+      
+      {/* Tips */}
+      {tips.length > 0 && (
+        <div className="mb-8 max-w-lg mx-auto">
+          <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">💡 Tips:</p>
+          <ul className="text-sm text-zinc-600 dark:text-zinc-400 space-y-2 text-left">
+            {tips.map((tip, index) => (
+              <li key={index} className="flex items-start gap-2">
+                <span className="text-zinc-400 mt-1">•</span>
+                <span>{tip}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      
+      {/* Action */}
+      {action && <div className="space-y-2">{action}</div>}
+    </div>
+  )
+}
+
+// Checkbox component
+export const Checkbox: React.FC<{
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label?: string;
+  className?: string;
+  size?: 'sm' | 'md' | 'lg';
+}> = ({
+  checked,
+  onChange,
+  label,
+  className = '',
+  size = 'md'
+}) => {
+  const sizeClasses = {
+    sm: 'w-4 h-4',
+    md: 'w-5 h-5',
+    lg: 'w-6 h-6'
+  }
+  
+  const labelSizeClasses = {
+    sm: 'text-sm',
+    md: 'text-base',
+    lg: 'text-lg'
+  }
+  
+  return (
+    <label className={`flex items-center gap-2 cursor-pointer ${className}`}>
+      <div className={`relative ${sizeClasses[size]}`}>
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="sr-only"
+        />
+        <div
+          className={`
+            ${sizeClasses[size]} rounded border-2 transition-all duration-200
+            ${checked 
+              ? 'bg-indigo-600 border-indigo-600 dark:bg-indigo-500 dark:border-indigo-500' 
+              : 'bg-white border-zinc-300 dark:bg-zinc-800 dark:border-zinc-600 hover:border-indigo-400 dark:hover:border-indigo-400'
+            }
+          `}
+        >
+          {checked && (
+            <svg
+              className={`${sizeClasses[size]} text-white absolute inset-0 p-0.5`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={3}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          )}
+        </div>
+      </div>
+      {label && (
+        <span className={`text-zinc-900 dark:text-zinc-100 ${labelSizeClasses[size]} select-none`}>
+          {label}
+        </span>
+      )}
+    </label>
+  )
+}
+
+// Progress bar component
+export const ProgressBar: React.FC<{
+  value: number; // 0-100
+  className?: string;
+  showLabel?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+  color?: 'primary' | 'success' | 'warning' | 'danger';
+}> = ({
+  value,
+  className = '',
+  showLabel = true,
+  size = 'md',
+  color = 'primary'
+}) => {
+  const clampedValue = Math.max(0, Math.min(100, value))
+  
+  const sizeClasses = {
+    sm: 'h-1',
+    md: 'h-2',
+    lg: 'h-3'
+  }
+  
+  const colorClasses = {
+    primary: 'bg-indigo-600',
+    success: 'bg-green-600',
+    warning: 'bg-yellow-600',
+    danger: 'bg-red-600'
+  }
+  
+  return (
+    <div className={`w-full ${className}`}>
+      <div className={`w-full ${sizeClasses[size]} bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden`}>
+        <div 
+          className={`h-full ${colorClasses[color]} transition-all duration-300 ease-out`}
+          style={{ width: `${clampedValue}%` }}
+        />
+      </div>
+      {showLabel && (
+        <div className="flex justify-between items-center mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+          <span>{clampedValue}% complete</span>
+        </div>
+      )}
+    </div>
+  )
+}

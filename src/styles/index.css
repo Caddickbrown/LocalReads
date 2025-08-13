@@ -468,6 +468,18 @@ select {
   background: rgba(0, 0, 0, 0.5) !important;
 }
 
+/* Sidebar slide animation enhancements */
+.sidebar-slide {
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.sidebar-text-slide {
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
 /* Enhanced card shadows and borders */
 .theme-sepia .card, .theme-forest .card, .theme-ocean .card, .theme-lavender .card {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
@@ -490,12 +502,45 @@ select {
   border: 2px dashed var(--theme-border, #e2e8f0) !important;
   border-radius: 1rem !important;
   padding: 3rem !important;
+  color: var(--theme-text, #374151) !important;
+}
+
+/* Dark mode empty state styling (default theme) */
+.dark .empty-state {
+  background: linear-gradient(135deg, #1f2937, #111827) !important;
+  border: 2px dashed #374151 !important;
+  color: #d1d5db !important;
+}
+
+/* Theme-specific empty state styling */
+.theme-sepia .empty-state {
+  background: linear-gradient(135deg, var(--theme-surface), var(--theme-bg)) !important;
+  border: 2px dashed var(--theme-border) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-forest .empty-state {
+  background: linear-gradient(135deg, var(--theme-surface), var(--theme-bg)) !important;
+  border: 2px dashed var(--theme-border) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-ocean .empty-state {
+  background: linear-gradient(135deg, var(--theme-surface), var(--theme-bg)) !important;
+  border: 2px dashed var(--theme-border) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-lavender .empty-state {
+  background: linear-gradient(135deg, var(--theme-surface), var(--theme-bg)) !important;
+  border: 2px dashed var(--theme-border) !important;
+  color: var(--theme-text) !important;
 }
 
 /* Main app container styling - default (no theme) */
 .app-container {
   min-height: 100vh;
-  background-color: #fafafa !important;
+  background-color: #f8f9fa !important;
   color: #18181b !important;
 }
 
@@ -566,6 +611,19 @@ select {
   }
 }
 
+/* Safe area utilities for mobile devices with notches/home indicators */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.safe-left { padding-left: env(safe-area-inset-left); }
+.safe-right { padding-right: env(safe-area-inset-right); }
+
+/* Improve touch targets on mobile */
+@media (max-width: 640px) {
+  button, .btn, .NavButton, .SidebarButton {
+    min-height: 44px;
+  }
+}
+
 @keyframes bounce {
   0%, 20%, 53%, 80%, 100% {
     transform: translateY(0);
@@ -623,6 +681,25 @@ tbody tr {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
+
+/* Reading streak and achievements animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+/* Card styles for removed streak/achievements have been deleted */
 
 /* Smooth scale animations */
 .scale-on-hover {

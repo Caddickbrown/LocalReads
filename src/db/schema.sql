@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS books (
   series_number INTEGER,
   obtained TEXT,
   type TEXT NOT NULL,
-  status TEXT NOT NULL
+  status TEXT NOT NULL,
+  next_up_priority BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS reads (
@@ -18,7 +19,10 @@ CREATE TABLE IF NOT EXISTS reads (
   end_date TEXT,
   rating INTEGER,
   review TEXT,
-  format TEXT
+  format TEXT,
+  current_page INTEGER DEFAULT 0,
+  total_pages INTEGER DEFAULT 0,
+  progress_percentage INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS tags (
@@ -34,8 +38,19 @@ CREATE TABLE IF NOT EXISTS book_tags (
 
 CREATE TABLE IF NOT EXISTS highlights (
   id TEXT PRIMARY KEY,
-  book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+  book_id TEXT REFERENCES books(id) ON DELETE SET NULL,
   text TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  commentary TEXT,
+  source_title TEXT,
+  source_author TEXT
+);
+
+CREATE TABLE IF NOT EXISTS reading_goals (
+  id TEXT PRIMARY KEY,
+  goal_type TEXT NOT NULL, -- 'monthly', 'yearly'
+  target_period TEXT NOT NULL, -- 'YYYY-MM' for monthly, 'YYYY' for yearly
+  target_count INTEGER NOT NULL,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 

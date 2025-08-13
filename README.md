@@ -1,68 +1,69 @@
 # LocalReads
 
-A fast, local‑first reading tracker with Library, Smart Lists, Highlights, and a simple Dashboard. Built with Tauri (desktop), React + Vite, Tailwind, and SQLite via tauri-plugin-sql.
+A comprehensive, local‑first reading tracker with advanced analytics, goal setting, and gamification features. Built with Tauri (desktop), React + Vite, Tailwind, and SQLite via tauri-plugin-sql.
 
 ## Features
+
 - **Local SQLite single file** (default: `localreads.sqlite` in app data)
-- **Books / Reads / Tags / Highlights**
-- **Smart Lists** (Next Up, Finished This Year, Re-reads)
-- **Omni search + filters** (status, tag, year)
-- **Dashboard** with books-per-year + quick tiles
-- **CSV Import/Export** (minimal schema)
-- **Light / Dark / System** theme
+- **Books / Reads / Tags / Highlights** with full editing capabilities
+- **Smart Lists & Dedicated Views** (Next Up with priority scoring, Re-reads timeline, Activity feed)
+- **Advanced Search** (library filters + highlights search with text highlighting)
+- **Reading Progress Tracking** (page progress, completion percentages, visual progress bars)
+- **Goal Setting & Analytics** (monthly/yearly goals with progress tracking)
+- **Mobile-Responsive Design** (touch-friendly navigation and card layouts)
+- **Enhanced Dashboard** (statistics, goals, recent activity)
+- **CSV Import/Export** with templates (Library and Highlights)
+- **Light / Dark / System** theme with 5 color themes (Sepia, Forest, Ocean, Lavender)
+- **Keyboard Shortcuts** (Ctrl+N for new book, Ctrl+H for highlights, etc.)
 
-## Roadmap / TODO
+## 🆕 Latest Major Features
 
-### ✅ Core Features (Completed)
-- [x] Editable highlights (edit/delete highlights in UI)
-- [x] Support multiple reads per book (add/manage multiple reading entries)
-- [x] Add Author, Series, and Tag search when adding a book
-- [x] Per-read type (ebook vs audiobook) selection
-- [x] Make Obtained a checkbox (or otherwise simplify acquisition tracking)
-- [x] Export/Import functionality (Library CSV, Highlights CSV, JSON)
-- [x] Allow changing the database file location with detailed error messages
-- [x] Colorful theme system (Sepia, Forest, Ocean, Lavender) with 0.5-second fade transitions
-- [x] Dashboard with reading statistics and colorful tiles
-- [x] Show reading dates in the Library table (split into Start Date and End Date)
-- [x] Import formats documentation and guides
-- [x] Add loading states and spinners for better feedback
-- [x] Implement keyboard shortcuts (Ctrl+N for new book, Ctrl+E for export, etc.)
-- [x] Micro-interactions and hover animations on book cards
-- [x] Clickable dashboard tiles that filter library view
-- [x] Enhanced theme system with proper dark mode colors and theme-specific selection
-- [x] Improved button text colors and visibility across all themes
-- [x] Modern dark mode toggle with prettier UI
+### 📖 **Next Up View** (Ctrl+U)
+Intelligent reading queue that prioritizes your books based on:
+- **Paused books** get highest priority (you were already reading them)
+- **Series continuity** to maintain reading flow
+- **Previous engagement** (books with highlights show interest)
+- **Customizable sorting** by priority, title, author, series, or date added
 
-### 🚀 UX Polish & Improvements
-- [ ] Enhanced empty states with helpful tips and illustrations
-- [ ] Better mobile/responsive experience with touch-friendly buttons
-- [ ] Progress bars for reading completion percentage
+### 🔄 **Re-reads View** (Ctrl+Shift+R)  
+Complete reading history for books you've read multiple times:
+- **Reading timeline** showing all reads with dates, ratings, and reviews
+- **Average rating calculation** across all reads
+- **Reading span analysis** (how long between first and latest read)
+- **Progress evolution** tracking how your opinion changed over time
 
-### 📚 Smart Lists & Views
-- [ ] Dedicated "Next Up" view with sorting options and reading context
-- [ ] Dedicated "Re-reads" view with reading history timeline
-- [ ] Recent activity feed on dashboard
-- [ ] Reading streak counter and achievement system
+<!-- Streaks & achievements removed -->
 
-### 🎨 Navigation & Interface
-- [ ] Update Menu to a sidebar with hover behavior
-- [ ] Improved navigation with breadcrumbs
-- [ ] Better responsive design for tablets and mobile
-- [ ] Swipe gestures for mobile navigation
-- [ ] Highlights Search
+### 🎯 **Reading Goals & Progress Tracking**
+Set and track your reading targets:
+- **Monthly and yearly goals** with customizable targets
+- **Visual progress bars** with color-coded status (green for achieved, blue for on-track, yellow for behind)
+- **Smart progress calculation** based on finished books
+- **Achievement celebration** when goals are reached
 
-### 📈 Advanced Features
-- [ ] Reading analytics and progress tracking
-- [ ] Reading speed analysis (pages per day, session length)
-- [ ] Book recommendations based on reading history and ratings
-- [ ] Monthly reading goals and progress tracking
-- [ ] Genre preferences chart and reading pattern analysis
+### 📱 **Mobile-First Design**
+Completely redesigned for mobile devices:
+- **3-column navigation grid** for easy thumb navigation
+- **Card-based library view** optimized for touch interactions
+- **Touch-friendly buttons** with 44px minimum hit targets
+- **Responsive breakpoints** that work seamlessly across devices
 
-### 🌍 Platform Expansion
-- [ ] iOS/Android/Web version
-- [ ] Sync across devices with cloud storage
-- [ ] Offline reading progress sync
-- [ ] Cloud backup and restore options
+### 🔍 **Advanced Search Features**
+Enhanced search capabilities:
+- **Highlights search** with filtering by book, author, or text content
+- **Text highlighting** in search results for easy scanning
+- **Contextual empty states** with helpful tips and suggestions
+- **Clear search functionality** with one-click filter reset
+
+### 📈 **Activity Dashboard**
+Comprehensive overview of your reading activities:
+- **Recent activity feed** showing finished books, started reads, and new highlights
+- **Visual activity indicators** with color-coded icons
+- **Reading statistics** with goal progress visualization
+
+## Roadmap
+
+For upcoming features and detailed change history, see [CHANGELOG.md](CHANGELOG.md).
 
 ## Import Guide
 
@@ -107,6 +108,8 @@ import { Card, Button } from './ui'
 
 ### CSV formats
 
+**Import Templates**: The Settings page now includes "Template" buttons that export empty CSV files with the correct headers for easy bulk importing. Use these templates as starting points for your data.
+
 #### Highlights CSV
 
 Headers (preferred):
@@ -141,8 +144,8 @@ Sample (table view for readability):
 
 Rules:
 - Required fields: `text` plus either `book` or `title`.
-- If `book`/`title` doesn’t match an existing book, it will be created automatically.
-- `id` and `created_at` are optional. If `id` is missing, it’s generated.
+- If `book`/`title` doesn't match an existing book, it will be created automatically.
+- `id` and `created_at` are optional. If `id` is missing, it's generated.
 - Commas and quotes inside `text` are supported via CSV quoting. Avoid line breaks inside a single cell.
 
 #### Library CSV
@@ -170,13 +173,13 @@ Side‑effect imports (keep to a minimum):
 import './styles/index.css'
 ```
 
-### Do / Don’t
+### Do / Don't
 - Do: use `@/` alias for project modules
 - Do: group and order consistently
 - Do: use `import type` for type‑only imports to avoid bundling code unintentionally
-- Don’t: use long chains of relative paths when an alias is available
-- Don’t: add file extensions for TS/TSX imports
-- Don’t: add per‑component CSS imports; Tailwind styles are global via `src/main.tsx`
+- Don't: use long chains of relative paths when an alias is available
+- Don't: add file extensions for TS/TSX imports
+- Don't: add per‑component CSS imports; Tailwind styles are global via `src/main.tsx`
 
 ## Requirements
 - Node.js 18+
@@ -194,6 +197,11 @@ npm run dev
 # 3) Dev (desktop window)
 npm run tauri:dev
 ```
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes.
+
 ## Potential Names
 - Inkmarks
 - Pagekeeper

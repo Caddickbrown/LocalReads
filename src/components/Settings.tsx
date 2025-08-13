@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { Settings as SettingsIcon, RefreshCw, Download, Upload, FileDown } from 'lucide-react'
-import { Card, CardHeader, CardContent, Button, Input, Textarea } from './ui'
+import { Settings as SettingsIcon, RefreshCw, Download, Upload, FileDown, X } from 'lucide-react'
+import { Card, CardHeader, CardContent, Button, Input, Textarea, ModalBackdrop } from './ui'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { save, open } from '@tauri-apps/plugin-dialog'
 import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs'
@@ -16,6 +16,19 @@ const copyToClipboard = async (text: string): Promise<void> => {
   }
 }
 import { exportCsvFor, listBooks, exportJson, importJson, exportHighlightsCsv, importHighlightsCsv, databasePath, setDatabasePath } from '@/db/repo'
+
+  // Template generation functions
+const generateBooksCsvTemplate = () => {
+  const headers = [
+    'title','author','seriesName','seriesNumber','obtained','type','status','tags','latestStart','latestEnd','latestRating','latestReview','highlightsCount'
+  ]
+  return headers.join(',') + '\n'
+}
+
+const generateHighlightsCsvTemplate = () => {
+  const headers = ['id','book','author','text','created_at','commentary']
+  return headers.join(',') + '\n'
+}
 // import { autoUpdater } from '@/utils/updater'
 
 import { ThemeMode, ExtraTheme } from '@/hooks/useTheme'
@@ -92,19 +105,26 @@ export default function Settings({
   ], [])
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold flex items-center gap-2"><SettingsIcon className="w-5 h-5"/> Settings</h2>
-          <Button onClick={onBack}>Back to Library</Button>
+    <ModalBackdrop onClick={onBack}>
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <SettingsIcon className="w-6 h-6 text-indigo-600" />
+            <h2 className="text-xl font-semibold">Settings</h2>
+          </div>
+          <Button variant="ghost" onClick={onBack} className="p-2">
+            <X className="w-5 h-5" />
+          </Button>
         </div>
-      </CardHeader>
+        
+        <div className="overflow-y-auto max-h-[75vh]">
+          <Card className="border-0 rounded-none shadow-none">
       <CardContent>
         <div className="space-y-6">
           <div>
-            <div className="text-sm font-medium mb-2">🌗 Dark Mode</div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-4">Choose your preferred appearance</div>
-            <div className="grid grid-cols-3 gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+            <div className="text-sm font-medium mb-1">🌗 Dark Mode</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Choose your preferred appearance</div>
+            <div className="flex gap-1 p-0.5 bg-zinc-100 dark:bg-gray-800 rounded-lg w-fit">
               <ModeButton
                 selected={mode === 'light'}
                 onClick={() => setMode('light')}
@@ -126,61 +146,47 @@ export default function Settings({
             </div>
           </div>
 
-                     <div>
-             <div className="text-sm font-medium mb-2">🎨 Color Themes</div>
-             <div className="text-xs text-gray-600 dark:text-gray-400 mb-4">Choose a beautiful color theme to enhance your reading experience</div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                             <ThemeCard 
+          <div>
+            <div className="text-sm font-medium mb-1">🎨 Color Themes</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Choose a color theme to enhance your reading experience</div>
+            <div className="flex flex-wrap gap-1 p-0.5 bg-zinc-100 dark:bg-gray-800 rounded-lg w-fit">
+              <ThemeButton
                 selected={extraTheme === null}
                 onClick={() => setExtraTheme(null)}
-                title="Default"
-                description="Clean and minimal"
-                colors={['#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe']}
                 emoji="⚪"
-                themeName="default"
+                label="Default"
+                colors={['#6366f1', '#818cf8']}
               />
-              
-              <ThemeCard 
+              <ThemeButton
                 selected={extraTheme === 'sepia'}
                 onClick={() => setExtraTheme('sepia')}
-                title="Sepia"
-                description="Warm and vintage"
-                colors={['#d2691e', '#daa520', '#cd853f', '#deb887']}
                 emoji="📜"
-                themeName="sepia"
+                label="Sepia"
+                colors={['#d2691e', '#daa520']}
               />
-              
-              <ThemeCard 
+              <ThemeButton
                 selected={extraTheme === 'forest'}
                 onClick={() => setExtraTheme('forest')}
-                title="Forest"
-                description="Natural and fresh"
-                colors={['#22c55e', '#16a34a', '#15803d', '#166534']}
                 emoji="🌲"
-                themeName="forest"
+                label="Forest"
+                colors={['#22c55e', '#16a34a']}
               />
-              
-              <ThemeCard 
+              <ThemeButton
                 selected={extraTheme === 'ocean'}
                 onClick={() => setExtraTheme('ocean')}
-                title="Ocean"
-                description="Cool and calming"
-                colors={['#0ea5e9', '#0284c7', '#0369a1', '#075985']}
                 emoji="🌊"
-                themeName="ocean"
+                label="Ocean"
+                colors={['#0ea5e9', '#0284c7']}
               />
-              
-              <ThemeCard 
+              <ThemeButton
                 selected={extraTheme === 'lavender'}
                 onClick={() => setExtraTheme('lavender')}
-                title="Lavender"
-                description="Elegant and dreamy"
-                colors={['#8b5cf6', '#7c3aed', '#6d28d9', '#5b21b6']}
                 emoji="🌸"
-                themeName="lavender"
+                label="Lavender"
+                colors={['#8b5cf6', '#7c3aed']}
               />
-             </div>
-           </div>
+            </div>
+          </div>
 
           <div>
             <div className="text-sm font-medium mb-2">Updates</div>
@@ -252,17 +258,19 @@ export default function Settings({
                   
                   try {
                     // Try to open the directory containing the database file using the opener plugin
+                    // @ts-ignore - type definitions may not be available yet
                     const opener = await import('@tauri-apps/plugin-opener')
                     console.log('Opener plugin loaded:', opener)
-                    console.log('Available methods:', Object.keys(opener))
+                    const anyOpener: any = opener as any
+                    console.log('Available methods:', Object.keys(anyOpener))
                     
                     // Try different possible function names to open the directory
-                    if (opener.open) {
+                    if (typeof anyOpener.open === 'function') {
                       console.log('Using opener.open to open directory')
-                      await opener.open(dirPath)
-                    } else if (opener.openPath) {
+                      await anyOpener.open(dirPath)
+                    } else if (typeof anyOpener.openPath === 'function') {
                       console.log('Using opener.openPath to open directory')
-                      await opener.openPath(dirPath)
+                      await anyOpener.openPath(dirPath)
                     } else {
                       throw new Error('No suitable open function found in opener plugin')
                     }
@@ -343,170 +351,246 @@ export default function Settings({
           </div>
 
           <div>
-            <div className="text-sm font-medium mb-2">Import / Export</div>
-            <div className="flex flex-wrap gap-3">
-              <Button
-                onClick={async ()=>{
-                  setExporting(true)
-                  try {
-                    console.log('Starting library export...')
-                    const rows = await listBooks()
-                    console.log('Got rows:', rows.length)
-                    const csv = await exportCsvFor(rows as any)
-                    console.log('Generated CSV length:', csv.length)
-                    const filePath = await save({
-                      title: 'Export Library CSV',
-                      defaultPath: 'localreads.csv',
-                      filters: [{ name: 'CSV', extensions: ['csv'] }]
-                    })
-                    console.log('Selected file path:', filePath)
-                    if (filePath) {
-                      await writeTextFile(filePath as string, csv)
-                      console.log('File written successfully')
-                      alert('Library CSV exported successfully!')
-                    } else {
-                      console.log('No file path selected')
+            <div className="text-sm font-medium mb-4">📥📤 Import / Export</div>
+            
+            {/* Books Section */}
+            <div className="mb-4">
+              <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-2 flex items-center gap-2">
+                📚 Books & Library
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={async ()=>{
+                    setExporting(true)
+                    try {
+                      console.log('Starting library export...')
+                      const rows = await listBooks()
+                      console.log('Got rows:', rows.length)
+                      const csv = await exportCsvFor(rows as any)
+                      console.log('Generated CSV length:', csv.length)
+                      const filePath = await save({
+                        title: 'Export Library CSV',
+                        defaultPath: 'localreads.csv',
+                        filters: [{ name: 'CSV', extensions: ['csv'] }]
+                      })
+                      console.log('Selected file path:', filePath)
+                      if (filePath) {
+                        await writeTextFile(filePath as string, csv)
+                        console.log('File written successfully')
+                        alert('Library CSV exported successfully!')
+                      } else {
+                        console.log('No file path selected')
+                      }
+                    } catch (error) {
+                      console.error('Export failed:', error)
+                      alert(`Export failed: ${error}`)
+                    } finally {
+                      setExporting(false)
                     }
-                  } catch (error) {
-                    console.error('Export failed:', error)
-                    alert(`Export failed: ${error}`)
-                  } finally {
-                    setExporting(false)
-                  }
-                }}
-                className="flex items-center gap-2"
-                disabled={exporting}
-              >
-                <FileDown className="w-4 h-4"/> {exporting ? 'Exporting…' : 'Export CSV'}
-              </Button>
-              <Button
-                onClick={async ()=>{
-                  setImporting(true)
-                  try {
-                    const filePath = await open({ multiple: false, filters: [{ name: 'CSV', extensions: ['csv'] }] })
-                    if (!filePath) return
-                    const text = await readTextFile(filePath as string)
-                    const { importCsv } = await import('@/db/repo')
-                    await importCsv(text)
-                    alert('Library CSV import complete')
-                  } finally {
-                    setImporting(false)
-                  }
-                }}
-                className="flex items-center gap-2"
-                disabled={importing}
-              >
-                <Upload className="w-4 h-4"/> {importing ? 'Importing…' : 'Import CSV'}
-              </Button>
-
-              <Button
-                onClick={async ()=>{
-                  setImporting(true)
-                  try {
-                    const filePath = await open({ multiple: false, filters: [{ name: 'CSV', extensions: ['csv'] }] })
-                    if (!filePath) return
-                    const text = await readTextFile(filePath as string)
-                    await importHighlightsCsv(text)
-                    alert('Highlights import complete')
-                  } finally {
-                    setImporting(false)
-                  }
-                }}
-                className="flex items-center gap-2"
-                disabled={importing}
-              >
-                <Upload className="w-4 h-4"/> {importing ? 'Importing…' : 'Import Highlights CSV'}
-              </Button>
-
-              <Button
-                onClick={async ()=>{
-                  setExporting(true)
-                  try {
-                    console.log('Starting JSON export...')
-                    const json = await exportJson()
-                    console.log('Generated JSON length:', json.length)
-                    const filePath = await save({
-                      title: 'Export Full JSON',
-                      defaultPath: 'localreads.json',
-                      filters: [{ name: 'JSON', extensions: ['json'] }]
-                    })
-                    console.log('Selected JSON file path:', filePath)
-                    if (filePath) {
-                      await writeTextFile(filePath as string, json)
-                      console.log('JSON file written successfully')
-                      alert('JSON exported successfully!')
-                    } else {
-                      console.log('No JSON file path selected')
+                  }}
+                  className="flex items-center gap-1 justify-center text-xs"
+                  size="sm"
+                  disabled={exporting}
+                >
+                  <FileDown className="w-3 h-3"/> {exporting ? 'Exporting…' : 'Export CSV'}
+                </Button>
+                <Button
+                  onClick={async ()=>{
+                    setImporting(true)
+                    try {
+                      const filePath = await open({ multiple: false, filters: [{ name: 'CSV', extensions: ['csv'] }] })
+                      if (!filePath) return
+                      const text = await readTextFile(filePath as string)
+                      const { importCsv } = await import('@/db/repo')
+                      await importCsv(text)
+                      alert('Library CSV import complete')
+                    } finally {
+                      setImporting(false)
                     }
-                  } catch (error) {
-                    console.error('JSON export failed:', error)
-                    alert(`JSON export failed: ${error}`)
-                  } finally {
-                    setExporting(false)
-                  }
-                }}
-                className="flex items-center gap-2"
-                disabled={exporting}
-              >
-                <FileDown className="w-4 h-4"/> {exporting ? 'Exporting…' : 'Export JSON'}
-              </Button>
-
-              <Button
-                onClick={async ()=>{
-                  setImporting(true)
-                  try {
-                    const filePath = await open({ multiple: false, filters: [{ name: 'JSON', extensions: ['json'] }] })
-                    if (!filePath) return
-                    const text = await readTextFile(filePath as string)
-                    await importJson(text)
-                    alert('JSON import complete')
-                  } finally {
-                    setImporting(false)
-                  }
-                }}
-                className="flex items-center gap-2"
-                disabled={importing}
-              >
-                <Upload className="w-4 h-4"/> {importing ? 'Importing…' : 'Import JSON'}
-              </Button>
-
-              <Button
-                onClick={async ()=>{
-                  setExporting(true)
-                  try {
-                    console.log('Starting highlights export...')
-                    const csv = await exportHighlightsCsv()
-                    console.log('Generated highlights CSV length:', csv.length)
-                    const filePath = await save({
-                      title: 'Export Highlights CSV',
-                      defaultPath: 'highlights.csv',
-                      filters: [{ name: 'CSV', extensions: ['csv'] }]
-                    })
-                    console.log('Selected highlights file path:', filePath)
-                    if (filePath) {
-                      await writeTextFile(filePath as string, csv)
-                      console.log('Highlights file written successfully')
-                      alert('Highlights CSV exported successfully!')
-                    } else {
-                      console.log('No highlights file path selected')
+                  }}
+                  className="flex items-center gap-1 justify-center text-xs"
+                  size="sm"
+                  disabled={importing}
+                >
+                  <Upload className="w-3 h-3"/> {importing ? 'Importing…' : 'Import CSV'}
+                </Button>
+                <Button
+                  onClick={async ()=>{
+                    try {
+                      const template = generateBooksCsvTemplate()
+                      const filePath = await save({
+                        title: 'Save Books CSV Template',
+                        defaultPath: 'books_template.csv',
+                        filters: [{ name: 'CSV', extensions: ['csv'] }]
+                      })
+                      if (filePath) {
+                        await writeTextFile(filePath as string, template)
+                        alert('Books CSV template saved successfully!\n\nThe template includes these columns:\ntitle, author, seriesName, seriesNumber, obtained, type, status, tags, latestStart, latestEnd, latestRating, latestReview, highlightsCount')
+                      }
+                    } catch (error) {
+                      alert(`Template export failed: ${error}`)
                     }
-                  } catch (error) {
-                    console.error('Highlights export failed:', error)
-                    alert(`Highlights export failed: ${error}`)
-                  } finally {
-                    setExporting(false)
-                  }
-                }}
-                className="flex items-center gap-2"
-                disabled={exporting}
-              >
-                <FileDown className="w-4 h-4"/> {exporting ? 'Exporting…' : 'Export Highlights CSV'}
-              </Button>
+                  }}
+                  className="flex items-center gap-1 justify-center text-xs"
+                  size="sm"
+                  variant="secondary"
+                >
+                  <FileDown className="w-3 h-3"/> Template
+                </Button>
+              </div>
+            </div>
+
+            {/* Gems Section */}
+            <div className="mb-4">
+              <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-2 flex items-center gap-2">
+                ✨ Gems
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={async ()=>{
+                    setExporting(true)
+                    try {
+                      console.log('Starting gems export...')
+                      const csv = await exportHighlightsCsv()
+                      console.log('Generated gems CSV length:', csv.length)
+                      const filePath = await save({
+                        title: 'Export Gems CSV',
+                        defaultPath: 'gems.csv',
+                        filters: [{ name: 'CSV', extensions: ['csv'] }]
+                      })
+                      console.log('Selected gems file path:', filePath)
+                      if (filePath) {
+                        await writeTextFile(filePath as string, csv)
+                        console.log('Gems file written successfully')
+                        alert('Gems CSV exported successfully!')
+                      } else {
+                        console.log('No gems file path selected')
+                      }
+                    } catch (error) {
+                      console.error('Gems export failed:', error)
+                      alert(`Gems export failed: ${error}`)
+                    } finally {
+                      setExporting(false)
+                    }
+                  }}
+                  className="flex items-center gap-1 justify-center text-xs"
+                  size="sm"
+                  disabled={exporting}
+                >
+                  <FileDown className="w-3 h-3"/> {exporting ? 'Exporting…' : 'Export CSV'}
+                </Button>
+                <Button
+                  onClick={async ()=>{
+                    setImporting(true)
+                    try {
+                      const filePath = await open({ multiple: false, filters: [{ name: 'CSV', extensions: ['csv'] }] })
+                      if (!filePath) return
+                      const text = await readTextFile(filePath as string)
+                      await importHighlightsCsv(text)
+                      alert('Gems import complete')
+                    } finally {
+                      setImporting(false)
+                    }
+                  }}
+                  className="flex items-center gap-1 justify-center text-xs"
+                  size="sm"
+                  disabled={importing}
+                >
+                  <Upload className="w-3 h-3"/> {importing ? 'Importing…' : 'Import CSV'}
+                </Button>
+                <Button
+                  onClick={async ()=>{
+                    try {
+                      const template = generateHighlightsCsvTemplate()
+                      const filePath = await save({
+                        title: 'Save Gems CSV Template',
+                        defaultPath: 'gems_template.csv',
+                        filters: [{ name: 'CSV', extensions: ['csv'] }]
+                      })
+                      if (filePath) {
+                        await writeTextFile(filePath as string, template)
+                        alert('Gems CSV template saved successfully!\n\nThe template includes these columns:\nid, book, author, text, created_at, commentary')
+                      }
+                    } catch (error) {
+                      alert(`Template export failed: ${error}`)
+                    }
+                  }}
+                  className="flex items-center gap-1 justify-center text-xs"
+                  size="sm"
+                  variant="secondary"
+                >
+                  <FileDown className="w-3 h-3"/> Template
+                </Button>
+              </div>
+            </div>
+
+            {/* Full Data Backup Section */}
+            <div className="mb-2">
+              <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-2 flex items-center gap-2">
+                💾 Full Data Backup (JSON)
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={async ()=>{
+                    setExporting(true)
+                    try {
+                      console.log('Starting JSON export...')
+                      const json = await exportJson()
+                      console.log('Generated JSON length:', json.length)
+                      const filePath = await save({
+                        title: 'Export Full JSON',
+                        defaultPath: 'localreads.json',
+                        filters: [{ name: 'JSON', extensions: ['json'] }]
+                      })
+                      console.log('Selected JSON file path:', filePath)
+                      if (filePath) {
+                        await writeTextFile(filePath as string, json)
+                        console.log('JSON file written successfully')
+                        alert('JSON exported successfully!')
+                      } else {
+                        console.log('No JSON file path selected')
+                      }
+                    } catch (error) {
+                      console.error('JSON export failed:', error)
+                      alert(`JSON export failed: ${error}`)
+                    } finally {
+                      setExporting(false)
+                    }
+                  }}
+                  className="flex items-center gap-1 justify-center text-xs"
+                  size="sm"
+                  disabled={exporting}
+                >
+                  <FileDown className="w-3 h-3"/> {exporting ? 'Exporting…' : 'Export Backup'}
+                </Button>
+                <Button
+                  onClick={async ()=>{
+                    setImporting(true)
+                    try {
+                      const filePath = await open({ multiple: false, filters: [{ name: 'JSON', extensions: ['json'] }] })
+                      if (!filePath) return
+                      const text = await readTextFile(filePath as string)
+                      await importJson(text)
+                      alert('JSON import complete')
+                    } finally {
+                      setImporting(false)
+                    }
+                  }}
+                  className="flex items-center gap-1 justify-center text-xs"
+                  size="sm"
+                  disabled={importing}
+                >
+                  <Upload className="w-3 h-3"/> {importing ? 'Importing…' : 'Restore Backup'}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </CardContent>
     </Card>
+        </div>
+      </div>
+    </ModalBackdrop>
   )
 }
 
@@ -518,15 +602,46 @@ function ModeButton({ selected, onClick, icon, label }: {
 }) {
   return (
     <button
-      className={`flex flex-col items-center gap-2 p-3 rounded-lg transition-all duration-300 ${
+      className={`flex flex-col items-center gap-1 p-2 rounded-md transition-all duration-300 ${
         selected
           ? 'bg-white dark:bg-zinc-600 shadow-md text-indigo-600 dark:text-white font-medium border border-indigo-200 dark:border-zinc-500'
-          : 'hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-600 dark:text-zinc-300 hover:text-gray-800 dark:hover:text-white'
+          : 'hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:text-zinc-800 dark:hover:text-white'
       }`}
       onClick={onClick}
     >
-      <span className="text-lg">{icon}</span>
+      <span className="text-sm">{icon}</span>
       <span className="text-xs font-medium">{label}</span>
+    </button>
+  )
+}
+
+function ThemeButton({ selected, onClick, emoji, label, colors }: {
+  selected: boolean;
+  onClick: () => void;
+  emoji: string;
+  label: string;
+  colors: string[];
+}) {
+  return (
+    <button
+      className={`flex flex-col items-center gap-1 p-2 rounded-md transition-all duration-300 ${
+        selected
+          ? 'bg-white dark:bg-zinc-600 shadow-md text-indigo-600 dark:text-white font-medium border border-indigo-200 dark:border-zinc-500'
+          : 'hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:text-zinc-800 dark:hover:text-white'
+      }`}
+      onClick={onClick}
+    >
+      <span className="text-sm">{emoji}</span>
+      <div className="flex gap-0.5 mb-0.5">
+        {colors.map((color, index) => (
+          <div
+            key={index}
+            className="w-1.5 h-1.5 rounded-full border border-white dark:border-zinc-800"
+            style={{ backgroundColor: color }}
+          />
+        ))}
+      </div>
+      <span className="text-xs font-medium leading-tight">{label}</span>
     </button>
   )
 }

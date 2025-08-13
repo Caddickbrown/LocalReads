@@ -8,17 +8,23 @@ interface KeyboardShortcut {
   category: string
 }
 
+// Helper function to detect OS
+const isMac = typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
+const modifierKey = isMac ? '⌘' : 'Ctrl'
+
 const shortcuts: KeyboardShortcut[] = [
   // Navigation
-  { key: 'Ctrl+L', description: 'Go to Library', category: 'Navigation' },
-  { key: 'Ctrl+D', description: 'Go to Dashboard', category: 'Navigation' },
-  { key: 'Ctrl+H', description: 'Go to Highlights', category: 'Navigation' },
-  { key: 'Ctrl+S', description: 'Go to Settings', category: 'Navigation' },
+  { key: `${modifierKey}+L`, description: 'Go to Library', category: 'Navigation' },
+  { key: `${modifierKey}+D`, description: 'Go to Dashboard', category: 'Navigation' },
+  { key: `${modifierKey}+H`, description: 'Go to Gems', category: 'Navigation' },
+
+  { key: `${modifierKey}+U`, description: 'Go to Next Up', category: 'Navigation' },
+  { key: `${modifierKey}+Shift+R`, description: 'Go to Re-reads', category: 'Navigation' },
   
   // Actions
-  { key: 'Ctrl+N', description: 'Add New Book', category: 'Actions' },
-  { key: 'Ctrl+R', description: 'Refresh Library', category: 'Actions' },
-  { key: 'Ctrl+E', description: 'Export Library CSV (in Settings)', category: 'Actions' },
+  { key: `${modifierKey}+N`, description: 'Add New Book', category: 'Actions' },
+  { key: `${modifierKey}+R`, description: 'Refresh Library', category: 'Actions' },
+  { key: `${modifierKey}+E`, description: 'Export Library CSV (in Settings)', category: 'Actions' },
   
   // Search & Filters
   { key: '/', description: 'Focus Search', category: 'Search & Filters' },

@@ -107,6 +107,19 @@ async function initDatabase() {
   // Attempt to add new columns for migrations if they don't exist
   try { await db.execute(`ALTER TABLE reads ADD COLUMN format TEXT`) } catch {}
   try { await db.execute(`ALTER TABLE highlights ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP`) } catch {}
+  try { await db.execute(`ALTER TABLE reads ADD COLUMN current_page INTEGER DEFAULT 0`) } catch {}
+  try { await db.execute(`ALTER TABLE reads ADD COLUMN total_pages INTEGER DEFAULT 0`) } catch {}
+  try { await db.execute(`ALTER TABLE reads ADD COLUMN progress_percentage INTEGER DEFAULT 0`) } catch {}
+  try { await db.execute(`ALTER TABLE books ADD COLUMN next_up_priority BOOLEAN DEFAULT FALSE`) } catch {}
+  try { 
+    await db.execute(`CREATE TABLE IF NOT EXISTS reading_goals (
+      id TEXT PRIMARY KEY,
+      goal_type TEXT NOT NULL,
+      target_period TEXT NOT NULL,
+      target_count INTEGER NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`)
+  } catch {}
 }
 
 export async function execSchema(sql: string) {
