@@ -1,35 +1,39 @@
 {
-    "name": "localreads-tauri",
-    "version": "0.1.0",
-    "private": true,
-    "type": "module",
-    "scripts": {
-      "dev": "vite",
-      "build": "vite build",
-      "preview": "vite preview",
-      "tauri:dev": "tauri dev",
-      "tauri:build": "tauri build",
-      "build:web": "vite build",
-      "build:tauri": "tauri build"
-    },
-    "dependencies": {
-      "react": "^18.2.0",
-      "react-dom": "^18.2.0",
-      "framer-motion": "^11.0.0",
-      "lucide-react": "^0.441.0",
-      "recharts": "^2.12.7",
-      "@tauri-apps/plugin-sql": "^2.0.0"
-    },
-    "devDependencies": {
-      "@tauri-apps/cli": "^2.0.0",
-      "@tauri-apps/api": "^2.0.0",
-      "@vitejs/plugin-react": "^4.2.1",
-      "@types/react": "^18.2.66",
-      "@types/react-dom": "^18.2.22",
-      "autoprefixer": "^10.4.20",
-      "postcss": "^8.4.41",
-      "tailwindcss": "^3.4.10",
-      "typescript": "^5.5.4",
-      "vite": "^5.3.4"
-    }
+  "name": "localreads-tauri",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "build:web": "vite build",
+    "build:tauri": "tauri build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.6.0",
+    "@tauri-apps/plugin-clipboard-manager": "^2.3.0",
+    "@tauri-apps/plugin-dialog": "^2.0.0",
+    "@tauri-apps/plugin-fs": "^2.0.0",
+    "@tauri-apps/plugin-opener": "^2.0.0",
+    "@tauri-apps/plugin-sql": "^2.0.0",
+    "framer-motion": "^11.0.0",
+    "lucide-react": "^0.441.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "@types/react": "^18.2.66",
+    "@types/react-dom": "^18.2.22",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.41",
+    "tailwindcss": "^3.4.10",
+    "typescript": "^5.5.4",
+    "vite": "^5.3.4"
   }
+}

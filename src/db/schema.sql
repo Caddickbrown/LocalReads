@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS reads (
   start_date TEXT,
   end_date TEXT,
   rating INTEGER,
-  review TEXT
+  review TEXT,
+  format TEXT
 );
 
 CREATE TABLE IF NOT EXISTS tags (
@@ -34,7 +35,8 @@ CREATE TABLE IF NOT EXISTS book_tags (
 CREATE TABLE IF NOT EXISTS highlights (
   id TEXT PRIMARY KEY,
   book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
-  text TEXT NOT NULL
+  text TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Helpful views

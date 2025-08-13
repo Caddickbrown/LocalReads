@@ -43,8 +43,8 @@ export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & {
   }
   
   const variantClasses = {
-    primary: 'bg-indigo-600 hover:bg-indigo-700 text-white focus:ring-indigo-500 shadow-sm hover:shadow',
-    secondary: 'bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-zinc-900 dark:text-zinc-100 focus:ring-zinc-500 border border-zinc-300 dark:border-zinc-600',
+    primary: 'bg-indigo-600 hover:bg-indigo-700 text-white focus:ring-indigo-500 shadow-sm hover:shadow btn-primary',
+    secondary: 'bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-zinc-900 dark:text-zinc-100 focus:ring-zinc-500 border border-zinc-300 dark:border-zinc-600 btn-secondary',
     danger: 'bg-red-600 hover:bg-red-700 text-white focus:ring-red-500 shadow-sm hover:shadow',
     ghost: 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 focus:ring-zinc-500'
   }
@@ -64,7 +64,7 @@ export const Card: React.FC<React.PropsWithChildren<{ className?: string }>> = (
   children, 
   className = '' 
 }) => (
-  <div className={`rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm ${className}`}>
+  <div className={`rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm card ${className}`}>
     {children}
   </div>
 )
@@ -145,7 +145,7 @@ export const ModalBackdrop: React.FC<React.PropsWithChildren<{
   onClick 
 }) => (
   <div 
-    className={`fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 ${className}`}
+    className={`fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 modal-backdrop ${className}`}
     onClick={onClick}
   >
     {children}
@@ -182,7 +182,7 @@ export const EmptyState: React.FC<{
   action, 
   className = '' 
 }) => (
-  <div className={`text-center py-12 ${className}`}>
+  <div className={`text-center py-12 empty-state ${className}`}>
     {icon && <div className="mx-auto w-12 h-12 text-zinc-400 mb-4">{icon}</div>}
     <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-2">{title}</h3>
     {description && <p className="text-zinc-600 dark:text-zinc-400 mb-6">{description}</p>}

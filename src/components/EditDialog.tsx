@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { X, Save, BookOpen, User, Hash, Tag, Download, Upload } from 'lucide-react'
 import type { Book, Read } from '@/types'
 import { BOOK_TYPES, STATUSES } from '@/types'
-import { upsertBook, upsertRead, setTagsForBook, readsForBook } from '@/db/repo'
+import { upsertBook, upsertRead, setTagsForBook, readsForBook, searchAuthors, searchSeries, searchTags, deleteRead } from '@/db/repo'
 import { Input, Textarea, Button, Card, CardHeader, CardContent, Select, ModalBackdrop, Spinner } from './ui'
 
 interface EditDialogProps {
@@ -12,6 +12,7 @@ interface EditDialogProps {
 }
 
 export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
+  const tauriReady = typeof window !== 'undefined' && !!((window as any).__TAURI__ || (window as any).__TAURI_INTERNALS__)
   const [formData, setFormData] = useState<Partial<Book>>({
     title: '',
     author: '',
@@ -28,14 +29,24 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
     start_date: '',
     end_date: '',
     rating: undefined,
-    review: ''
+    review: '',
+    format: undefined
   })
+  const [reads, setReads] = useState<Read[]>([])
+  const [editingReadId, setEditingReadId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [statusMsg, setStatusMsg] = useState<string>('')
+  const [authorSuggestions, setAuthorSuggestions] = useState<string[]>([])
+  const [seriesSuggestions, setSeriesSuggestions] = useState<string[]>([])
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
+  const [showAuthorSuggestions, setShowAuthorSuggestions] = useState(false)
+  const [showSeriesSuggestions, setShowSeriesSuggestions] = useState(false)
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false)
 
   useEffect(() => {
     if (book) {
       setFormData(book)
-      // Load existing read data if book exists
+      // Load existing reads
       loadReadData(book.id)
       // Load existing tags
       loadTags(book.id)
@@ -44,15 +55,21 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
 
   const loadReadData = async (bookId: string) => {
     try {
-      const reads = await readsForBook(bookId)
-      if (reads.length > 0) {
-        const latestRead = reads[0] // Assuming most recent first
+      const list = await readsForBook(bookId)
+      setReads(list)
+      if (list.length > 0) {
+        const latestRead = list[0]
         setReadData({
           start_date: latestRead.start_date || '',
           end_date: latestRead.end_date || '',
           rating: latestRead.rating || undefined,
-          review: latestRead.review || ''
+          review: latestRead.review || '',
+          format: latestRead.format || undefined
         })
+        setEditingReadId(latestRead.id)
+      } else {
+        setEditingReadId(null)
+        setReadData({ start_date: '', end_date: '', rating: undefined, review: '', format: undefined })
       }
     } catch (error) {
       console.error('Error loading read data:', error)
@@ -71,6 +88,39 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
   const handleInputChange = (field: keyof Book, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
+  // typeahead search (debounced)
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      try {
+        const q = (formData.author || '').trim()
+        if (q) setAuthorSuggestions(await searchAuthors(q))
+        else setAuthorSuggestions([])
+      } catch {}
+    }, 200)
+    return () => clearTimeout(t)
+  }, [formData.author])
+
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      try {
+        const q = (formData.series_name || '').trim()
+        if (q) setSeriesSuggestions(await searchSeries(q))
+        else setSeriesSuggestions([])
+      } catch {}
+    }, 200)
+    return () => clearTimeout(t)
+  }, [formData.series_name])
+
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      try {
+        const q = tagInput.trim()
+        if (q) setTagSuggestions(await searchTags(q))
+        else setTagSuggestions([])
+      } catch {}
+    }, 200)
+    return () => clearTimeout(t)
+  }, [tagInput])
 
   const handleReadChange = (field: keyof Read, value: any) => {
     setReadData(prev => ({ ...prev, [field]: value }))
@@ -89,6 +139,9 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setStatusMsg('Submitting…')
+    console.log('Form submitted with data:', { formData, tags, readData })
+    
     if (!formData.title?.trim() || !formData.author?.trim()) {
       alert('Title and Author are required')
       return
@@ -96,25 +149,34 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
 
     setIsLoading(true)
     try {
+      console.log('Attempting to save book...')
+      setStatusMsg('Saving book…')
       // Save book
       const bookId = await upsertBook(formData)
+      console.log('Book saved with ID:', bookId)
+      setStatusMsg('Book saved. Saving tags…')
       
       // Save tags
+      console.log('Saving tags:', tags)
       await setTagsForBook(bookId, tags)
+      console.log('Tags saved successfully')
+      setStatusMsg('Tags saved.')
       
-      // Save read data if we have any
-      if (readData.start_date || readData.end_date || readData.rating || readData.review) {
-        await upsertRead({
-          ...readData,
-          book_id: bookId
-        })
-      }
-      
+      console.log('All data saved successfully, closing dialog')
+      setStatusMsg('Saved!')
       onSave()
+      // also signal a library refresh in case the parent is not mounted
+      window.dispatchEvent(new CustomEvent('refresh-library'))
       onClose()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving book:', error)
-      alert('Error saving book. Please try again.')
+      const msg = String(error?.message || error)
+      setStatusMsg(`Error: ${msg}`)
+      if (msg.includes('__TAURI_INTERNALS')) {
+        alert('Saving requires the Tauri runtime. Make sure you are running the desktop app window (npm run tauri:dev) or the installed app, not just the browser preview.')
+      } else {
+        alert(`Error saving book: ${msg}. Please try again.`)
+      }
     } finally {
       setIsLoading(false)
     }
@@ -144,7 +206,7 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
           </div>
         </CardHeader>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6" noValidate>
           {/* Basic Book Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -155,6 +217,7 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
               <Input
                 value={formData.title || ''}
                 onChange={(e) => handleInputChange('title', e.target.value)}
+                onKeyDown={(e)=>{ if(e.key==='Enter'){ e.preventDefault(); handleSubmit(e as any)} }}
                 placeholder="Book title"
                 required
               />
@@ -168,9 +231,19 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
               <Input
                 value={formData.author || ''}
                 onChange={(e) => handleInputChange('author', e.target.value)}
+                onKeyDown={(e)=>{ if(e.key==='Enter'){ e.preventDefault(); handleSubmit(e as any)} }}
                 placeholder="Author name"
                 required
               />
+              {authorSuggestions.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-2 text-xs">
+                  {authorSuggestions.slice(0,6).map(name => (
+                    <button type="button" key={name} onClick={() => handleInputChange('author', name)} className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700">
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -183,6 +256,15 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
                 onChange={(e) => handleInputChange('series_name', e.target.value)}
                 placeholder="Series name (optional)"
               />
+              {seriesSuggestions.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-2 text-xs">
+                  {seriesSuggestions.slice(0,6).map(name => (
+                    <button type="button" key={name} onClick={() => handleInputChange('series_name', name)} className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700">
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             
             <div>
@@ -225,16 +307,18 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
             
             <div>
               <label className="block text-sm font-medium mb-2">Obtained</label>
-              <Select
-                value={formData.obtained || ''}
-                onChange={(e) => handleInputChange('obtained', e.target.value || null)}
-              >
-                <option value="">Not specified</option>
-                <option value="Owned">Owned</option>
-                <option value="Borrowed">Borrowed</option>
-                <option value="Library">Library</option>
-                <option value="Wishlist">Wishlist</option>
-              </Select>
+              <div className="flex flex-wrap gap-3 text-sm">
+                {['Owned','Borrowed','Library','Wishlist'].map(opt => (
+                  <label key={opt} className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.obtained === opt}
+                      onChange={(e)=> handleInputChange('obtained', e.target.checked ? (opt as any) : null)}
+                    />
+                    {opt}
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -256,6 +340,40 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
                   Add
                 </Button>
               </div>
+              {tagSuggestions.length > 0 && (
+                <div className="mt-2 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                  <div className="text-xs text-zinc-600 dark:text-zinc-400 mb-2 flex items-center gap-1">
+                    <Tag className="w-3 h-3" />
+                    Suggested tags:
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {tagSuggestions.slice(0,8).map((tag, index) => (
+                      <button 
+                        type="button" 
+                        key={tag} 
+                        onClick={() => {
+                          if (!tags.includes(tag)) {
+                            setTags(prev => [...prev, tag])
+                            setTagInput('')
+                          }
+                        }}
+                        disabled={tags.includes(tag)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-sm ${
+                          tags.includes(tag)
+                            ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 cursor-not-allowed'
+                            : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 cursor-pointer'
+                        }`}
+                        style={{ 
+                          animationDelay: `${index * 50}ms`,
+                          animation: 'fadeInUp 0.3s ease-out forwards'
+                        }}
+                      >
+                        #{tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {tags.map(tag => (
@@ -314,6 +432,18 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
                   ))}
                 </Select>
               </div>
+              <div>
+                <label className="block text-xs text-zinc-600 dark:text-zinc-400 mb-1">Format (optional)</label>
+                <Select
+                  value={readData.format || ''}
+                  onChange={(e) => handleReadChange('format', e.target.value || undefined)}
+                >
+                  <option value="">Same as book</option>
+                  {BOOK_TYPES.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </Select>
+              </div>
             </div>
             
             <div className="mt-4">
@@ -325,15 +455,93 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
                 onChange={(e) => handleReadChange('review', e.target.value)}
               />
             </div>
+
+            <div className="flex gap-2 mt-4">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={async () => {
+                  if (!formData.id && !book?.id) {
+                    alert('Save the book first before adding a read.')
+                    return
+                  }
+                  const bookId = (formData.id || book?.id) as string
+                  const id = await upsertRead({
+                    ...(editingReadId ? { id: editingReadId } : {}),
+                    ...readData,
+                    book_id: bookId
+                  })
+                  setEditingReadId(id)
+                  await loadReadData(bookId)
+                }}
+              >
+                Save Read Entry
+              </Button>
+              {editingReadId && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={async () => {
+                    if (!editingReadId) return
+                    if (!confirm('Delete this read entry?')) return
+                    await deleteRead(editingReadId)
+                    const bookId = (formData.id || book?.id) as string
+                    await loadReadData(bookId)
+                  }}
+                >
+                  Delete Read Entry
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setEditingReadId(null)
+                  setReadData({ start_date: '', end_date: '', rating: undefined, review: '', format: undefined })
+                }}
+              >
+                New Read Entry
+              </Button>
+            </div>
+
+            {reads.length > 0 && (
+              <div className="mt-4">
+                <div className="text-xs text-zinc-600 dark:text-zinc-400 mb-2">Existing Reads</div>
+                <div className="space-y-2">
+                  {reads.map(r => (
+                    <div key={r.id} className={`p-2 rounded-xl border ${editingReadId===r.id ? 'border-indigo-400' : 'border-zinc-200 dark:border-zinc-800'}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs">
+                          {r.start_date || '-'} → {r.end_date || '-'}
+                          {r.rating ? ` · ${r.rating}★` : ''}
+                          {r.format ? ` · ${r.format}` : ''}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button type="button" variant="secondary" onClick={() => { setEditingReadId(r.id); setReadData({ start_date: r.start_date || '', end_date: r.end_date || '', rating: r.rating || undefined, review: r.review || '', format: r.format || undefined }) }}>Edit</Button>
+                          <Button type="button" variant="secondary" onClick={async () => { if (!confirm('Delete this read entry?')) return; await deleteRead(r.id); const bookId = (formData.id || book?.id) as string; await loadReadData(bookId) }}>Delete</Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="flex-1 flex items-center justify-center gap-2"
-            >
+          <div className="flex flex-col gap-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+            {!tauriReady && (
+              <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                Saving is only available in the desktop app window. Close the browser tab and use the LocalReads window opened by "npm run tauri:dev" or the installed app.
+              </div>
+            )}
+            <div className="flex gap-3 items-center">
+              <Button
+                type="submit"
+                onClick={(e)=>handleSubmit(e as any)}
+                disabled={isLoading}
+                className="flex-1 flex items-center justify-center gap-2"
+              >
               {isLoading ? (
                 <>
                   <Spinner size="sm" />
@@ -355,6 +563,10 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
             >
               Cancel
             </Button>
+              {statusMsg && (
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-2 whitespace-pre">{statusMsg}</span>
+              )}
+            </div>
           </div>
         </form>
       </div>

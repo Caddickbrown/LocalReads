@@ -10,6 +10,7 @@ export type Read = {
   end_date?: string;   // YYYY-MM-DD
   rating?: number;     // 1..5
   review?: string;
+  format?: BookType;   // Optional per-read format (Book/Ebook/Audiobook)
 }
 
 export type Book = {

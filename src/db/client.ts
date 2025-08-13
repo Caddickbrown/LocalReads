@@ -1,20 +1,51 @@
 import Database from '@tauri-apps/plugin-sql'
+import { appConfigDir } from '@tauri-apps/api/path'
 
 let dbPromise: Promise<Database> | null = null
+let overrideDbPath: string | null = null
+
+function isTauriEnvironment(): boolean {
+  // Tauri v2 injects __TAURI_INTERNALS__ into the window inside the WebView
+  return typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__ != null
+}
 
 export async function getDb(): Promise<Database> {
   if (!dbPromise) {
+    console.log('Initializing database connection...')
     // Initialize the database with Tauri v2 SQL plugin
-    dbPromise = Database.load('sqlite:localreads.db')
+    // Use app-config base dir; ensure consistent path across dev/prod
+    if (!isTauriEnvironment()) {
+      const message = 'Database is unavailable: not running inside the Tauri app. Please use the native window (npm run tauri:dev) or the installed app.'
+      console.error(message)
+      throw new Error(message)
+    }
+    // Resolve app config dir and load an explicit file path
+    try {
+      const target = await resolveDatabasePath()
+      console.log('SQLite file location:', target)
+      dbPromise = Database.load(`sqlite:${target}`)
+    } catch {
+      // Fallback to default configured name if path resolution fails
+      dbPromise = Database.load('sqlite:localreads.sqlite')
+    }
     
     // Initialize the database schema
     try {
+      console.log('Initializing database schema...')
       await initDatabase()
+      console.log('Database initialized successfully')
     } catch (error) {
       console.error('Failed to initialize database:', error)
+      throw error
     }
   }
   return dbPromise
+}
+
+async function resolveDatabasePath(): Promise<string> {
+  if (overrideDbPath) return overrideDbPath
+  const dir = await appConfigDir()
+  return `${dir}localreads.sqlite`
 }
 
 async function initDatabase() {
@@ -54,6 +85,7 @@ async function initDatabase() {
       end_date TEXT,
       rating INTEGER,
       review TEXT,
+      format TEXT,
       FOREIGN KEY (book_id) REFERENCES books (id) ON DELETE CASCADE
     );
 
@@ -71,9 +103,29 @@ async function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_reads_book_id ON reads (book_id);
     CREATE INDEX IF NOT EXISTS idx_highlights_book_id ON highlights (book_id);
   `)
+
+  // Attempt to add new columns for migrations if they don't exist
+  try { await db.execute(`ALTER TABLE reads ADD COLUMN format TEXT`) } catch {}
+  try { await db.execute(`ALTER TABLE highlights ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP`) } catch {}
 }
 
 export async function execSchema(sql: string) {
   const db = await getDb()
   return db.execute(sql)
+}
+
+export async function getDatabasePath(): Promise<string> {
+  try {
+    if (overrideDbPath) return overrideDbPath
+    const dir = await appConfigDir()
+    return `${dir}localreads.sqlite`
+  } catch {
+    return 'localreads.sqlite'
+  }
+}
+
+export async function setDatabasePath(newPath: string) {
+  overrideDbPath = newPath
+  // Force re-init on next access
+  dbPromise = null
 }

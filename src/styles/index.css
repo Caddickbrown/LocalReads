@@ -5,3 +5,654 @@
 :root {
   color-scheme: light dark;
 }
+
+/* Smooth theme transitions */
+html, body, #root {
+  transition: background-color 300ms ease, color 300ms ease;
+}
+
+* {
+  transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease !important;
+}
+
+/* Extra theme styles - Light Mode */
+.theme-sepia {
+  --theme-primary: #d2691e;
+  --theme-primary-hover: #cd853f;
+  --theme-primary-text: #ffffff;
+  --theme-secondary: #daa520;
+  --theme-secondary-hover: #b8860b;
+  --theme-accent: #ff8c00;
+  --theme-bg: #faf6f1;
+  --theme-surface: #f5f0e8;
+  --theme-text: #5d4e37;
+  --theme-text-muted: #8b6914;
+  --theme-border: #d2b48c;
+  --theme-gradient-from: #daa520;
+  --theme-gradient-to: #cd853f;
+}
+
+/* Sepia Dark Mode */
+.dark.theme-sepia {
+  --theme-primary: #8b4513;
+  --theme-primary-hover: #a0522d;
+  --theme-primary-text: #ffffff;
+  --theme-secondary: #654321;
+  --theme-secondary-hover: #8b4513;
+  --theme-accent: #d2691e;
+  --theme-bg: #1a1612;
+  --theme-surface: #2a241f;
+  --theme-text: #e5d5bc;
+  --theme-text-muted: #c7b299;
+  --theme-border: #3a342f;
+  --theme-gradient-from: #654321;
+  --theme-gradient-to: #8b4513;
+}
+
+.theme-sepia {
+  background-color: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-sepia .card {
+  background-color: var(--theme-surface) !important;
+  border-color: var(--theme-border) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-sepia .btn-primary {
+  background: linear-gradient(135deg, var(--theme-gradient-from), var(--theme-gradient-to)) !important;
+  color: var(--theme-primary-text) !important;
+  border: none !important;
+}
+
+.theme-sepia h1, .theme-sepia h2, .theme-sepia h3, .theme-sepia h4, .theme-sepia h5, .theme-sepia h6 {
+  color: var(--theme-text) !important;
+}
+
+.theme-sepia p, .theme-sepia span, .theme-sepia div {
+  color: var(--theme-text) !important;
+}
+
+.theme-sepia input, .theme-sepia textarea, .theme-sepia select {
+  background-color: var(--theme-surface) !important;
+  color: var(--theme-text) !important;
+  border-color: var(--theme-border) !important;
+}
+
+.theme-sepia .text-zinc-600, .theme-sepia .text-zinc-500, .theme-sepia .text-zinc-400 {
+  color: var(--theme-text-muted) !important;
+}
+
+.theme-forest {
+  --theme-primary: #22c55e;
+  --theme-primary-hover: #16a34a;
+  --theme-primary-text: #ffffff;
+  --theme-secondary: #84cc16;
+  --theme-secondary-hover: #65a30d;
+  --theme-accent: #10b981;
+  --theme-bg: #f0fdf4;
+  --theme-surface: #ecfdf5;
+  --theme-text: #14532d;
+  --theme-text-muted: #166534;
+  --theme-border: #bbf7d0;
+  --theme-gradient-from: #22c55e;
+  --theme-gradient-to: #16a34a;
+}
+
+/* Forest Dark Mode */
+.dark.theme-forest {
+  --theme-primary: #15803d;
+  --theme-primary-hover: #22c55e;
+  --theme-primary-text: #ffffff;
+  --theme-secondary: #365314;
+  --theme-secondary-hover: #4d7c0f;
+  --theme-accent: #059669;
+  --theme-bg: #0f1511;
+  --theme-surface: #1f2a1f;
+  --theme-text: #ffffff;
+  --theme-text-muted: #e5e7eb;
+  --theme-border: #2f3f2f;
+  --theme-gradient-from: #365314;
+  --theme-gradient-to: #15803d;
+}
+
+.theme-forest {
+  background-color: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-forest .card {
+  background-color: var(--theme-surface) !important;
+  border-color: var(--theme-border) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-forest .btn-primary {
+  background: linear-gradient(135deg, var(--theme-gradient-from), var(--theme-gradient-to)) !important;
+  color: var(--theme-primary-text) !important;
+  border: none !important;
+}
+
+.theme-forest h1, .theme-forest h2, .theme-forest h3, .theme-forest h4, .theme-forest h5, .theme-forest h6 {
+  color: var(--theme-text) !important;
+}
+
+.theme-forest p, .theme-forest span, .theme-forest div {
+  color: var(--theme-text) !important;
+}
+
+.theme-forest input, .theme-forest textarea, .theme-forest select {
+  background-color: var(--theme-surface) !important;
+  color: var(--theme-text) !important;
+  border-color: var(--theme-border) !important;
+}
+
+.theme-forest .text-zinc-600, .theme-forest .text-zinc-500, .theme-forest .text-zinc-400 {
+  color: var(--theme-text-muted) !important;
+}
+
+.theme-ocean {
+  --theme-primary: #0ea5e9;
+  --theme-primary-hover: #0284c7;
+  --theme-primary-text: #ffffff;
+  --theme-secondary: #06b6d4;
+  --theme-secondary-hover: #0891b2;
+  --theme-accent: #3b82f6;
+  --theme-bg: #f0f9ff;
+  --theme-surface: #e0f2fe;
+  --theme-text: #0c4a6e;
+  --theme-text-muted: #075985;
+  --theme-border: #7dd3fc;
+  --theme-gradient-from: #0ea5e9;
+  --theme-gradient-to: #06b6d4;
+}
+
+/* Ocean Dark Mode */
+.dark.theme-ocean {
+  --theme-primary: #0284c7;
+  --theme-primary-hover: #0ea5e9;
+  --theme-primary-text: #ffffff;
+  --theme-secondary: #164e63;
+  --theme-secondary-hover: #0891b2;
+  --theme-accent: #2563eb;
+  --theme-bg: #0a1419;
+  --theme-surface: #1a2428;
+  --theme-text: #bfdbfe;
+  --theme-text-muted: #93c5fd;
+  --theme-border: #2a3438;
+  --theme-gradient-from: #164e63;
+  --theme-gradient-to: #0284c7;
+}
+
+.theme-ocean {
+  background-color: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-ocean .card {
+  background-color: var(--theme-surface) !important;
+  border-color: var(--theme-border) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-ocean .btn-primary {
+  background: linear-gradient(135deg, var(--theme-gradient-from), var(--theme-gradient-to)) !important;
+  color: var(--theme-primary-text) !important;
+  border: none !important;
+}
+
+.theme-ocean h1, .theme-ocean h2, .theme-ocean h3, .theme-ocean h4, .theme-ocean h5, .theme-ocean h6 {
+  color: var(--theme-text) !important;
+}
+
+.theme-ocean p, .theme-ocean span, .theme-ocean div {
+  color: var(--theme-text) !important;
+}
+
+.theme-ocean input, .theme-ocean textarea, .theme-ocean select {
+  background-color: var(--theme-surface) !important;
+  color: var(--theme-text) !important;
+  border-color: var(--theme-border) !important;
+}
+
+.theme-ocean .text-zinc-600, .theme-ocean .text-zinc-500, .theme-ocean .text-zinc-400 {
+  color: var(--theme-text-muted) !important;
+}
+
+.theme-lavender {
+  --theme-primary: #8b5cf6;
+  --theme-primary-hover: #7c3aed;
+  --theme-primary-text: #ffffff;
+  --theme-secondary: #a855f7;
+  --theme-secondary-hover: #9333ea;
+  --theme-accent: #d946ef;
+  --theme-bg: #faf5ff;
+  --theme-surface: #f3e8ff;
+  --theme-text: #581c87;
+  --theme-text-muted: #6b21a8;
+  --theme-border: #c4b5fd;
+  --theme-gradient-from: #8b5cf6;
+  --theme-gradient-to: #a855f7;
+}
+
+/* Lavender Dark Mode */
+.dark.theme-lavender {
+  --theme-primary: #7c3aed;
+  --theme-primary-hover: #8b5cf6;
+  --theme-primary-text: #ffffff;
+  --theme-secondary: #4c1d95;
+  --theme-secondary-hover: #6d28d9;
+  --theme-accent: #a855f7;
+  --theme-bg: #151218;
+  --theme-surface: #251f28;
+  --theme-text: #e9d5ff;
+  --theme-text-muted: #ddd6fe;
+  --theme-border: #352f38;
+  --theme-gradient-from: #4c1d95;
+  --theme-gradient-to: #7c3aed;
+}
+
+.theme-lavender {
+  background-color: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-lavender .card {
+  background-color: var(--theme-surface) !important;
+  border-color: var(--theme-border) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-lavender .btn-primary {
+  background: linear-gradient(135deg, var(--theme-gradient-from), var(--theme-gradient-to)) !important;
+  color: var(--theme-primary-text) !important;
+  border: none !important;
+}
+
+.theme-lavender h1, .theme-lavender h2, .theme-lavender h3, .theme-lavender h4, .theme-lavender h5, .theme-lavender h6 {
+  color: var(--theme-text) !important;
+}
+
+.theme-lavender p, .theme-lavender span, .theme-lavender div {
+  color: var(--theme-text) !important;
+}
+
+.theme-lavender input, .theme-lavender textarea, .theme-lavender select {
+  background-color: var(--theme-surface) !important;
+  color: var(--theme-text) !important;
+  border-color: var(--theme-border) !important;
+}
+
+.theme-lavender .text-zinc-600, .theme-lavender .text-zinc-500, .theme-lavender .text-zinc-400 {
+  color: var(--theme-text-muted) !important;
+}
+
+/* Global theme button styles */
+.btn-primary {
+  transition: all 300ms ease !important;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Theme-specific accent colors for icons and highlights */
+.theme-sepia .text-accent { color: var(--theme-accent) !important; }
+.theme-forest .text-accent { color: var(--theme-accent) !important; }
+.theme-ocean .text-accent { color: var(--theme-accent) !important; }
+.theme-lavender .text-accent { color: var(--theme-accent) !important; }
+
+
+
+/* Global text overrides for all themes */
+.theme-sepia *, .theme-forest *, .theme-ocean *, .theme-lavender * {
+  color: inherit !important;
+}
+
+/* Specific overrides for common text classes */
+.theme-sepia .text-zinc-900, .theme-forest .text-zinc-900, .theme-ocean .text-zinc-900, .theme-lavender .text-zinc-900 {
+  color: var(--theme-text) !important;
+}
+
+.theme-sepia .text-zinc-100, .theme-forest .text-zinc-100, .theme-ocean .text-zinc-100, .theme-lavender .text-zinc-100 {
+  color: var(--theme-text) !important;
+}
+
+.theme-sepia .dark\\:text-zinc-100, .theme-forest .dark\\:text-zinc-100, .theme-ocean .dark\\:text-zinc-100, .theme-lavender .dark\\:text-zinc-100 {
+  color: var(--theme-text) !important;
+}
+
+.theme-sepia .dark\\:text-zinc-300, .theme-forest .dark\\:text-zinc-300, .theme-ocean .dark\\:text-zinc-300, .theme-lavender .dark\\:text-zinc-300 {
+  color: var(--theme-text-muted) !important;
+}
+
+/* Table text */
+.theme-sepia table, .theme-forest table, .theme-ocean table, .theme-lavender table {
+  color: var(--theme-text) !important;
+}
+
+.theme-sepia td, .theme-forest td, .theme-ocean td, .theme-lavender td,
+.theme-sepia th, .theme-forest th, .theme-ocean th, .theme-lavender th {
+  color: var(--theme-text) !important;
+}
+
+/* Button text color fixes for themes */
+.theme-sepia button:not(.btn-primary):not(.btn-secondary), 
+.theme-forest button:not(.btn-primary):not(.btn-secondary), 
+.theme-ocean button:not(.btn-primary):not(.btn-secondary), 
+.theme-lavender button:not(.btn-primary):not(.btn-secondary) {
+  color: var(--theme-text) !important;
+}
+
+/* Ensure secondary buttons have proper contrast */
+.theme-sepia .btn-secondary, 
+.theme-forest .btn-secondary, 
+.theme-ocean .btn-secondary, 
+.theme-lavender .btn-secondary {
+  background-color: var(--theme-secondary) !important;
+  color: white !important;
+  border: none !important;
+}
+
+/* Override default button variants in themes */
+.theme-sepia button[class*="bg-zinc"], 
+.theme-forest button[class*="bg-zinc"], 
+.theme-ocean button[class*="bg-zinc"], 
+.theme-lavender button[class*="bg-zinc"] {
+  background-color: var(--theme-secondary) !important;
+  color: white !important;
+}
+
+/* Fix text color for buttons with secondary variant */
+.theme-sepia .btn-secondary *, 
+.theme-forest .btn-secondary *, 
+.theme-ocean .btn-secondary *, 
+.theme-lavender .btn-secondary * {
+  color: white !important;
+}
+
+/* Modern Select/Dropdown styling for all themes */
+select {
+  appearance: none !important;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.75rem center !important;
+  background-size: 1rem !important;
+  padding-right: 2.5rem !important;
+}
+
+/* Enhanced Dashboard Stat Boxes */
+.dashboard-stat {
+  background: linear-gradient(135deg, var(--theme-primary, #6366f1), var(--theme-secondary, #8b5cf6)) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.1) !important;
+  transition: all 300ms ease !important;
+}
+
+.dashboard-stat:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 25px 0 rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Theme-specific dashboard stats */
+.theme-sepia .dashboard-stat {
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary)) !important;
+}
+
+.theme-forest .dashboard-stat {
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary)) !important;
+}
+
+.theme-ocean .dashboard-stat {
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary)) !important;
+}
+
+.theme-lavender .dashboard-stat {
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary)) !important;
+}
+
+/* Enhanced Select styling for each theme */
+.theme-sepia select {
+  background-color: var(--theme-surface) !important;
+  color: var(--theme-text) !important;
+  border: 2px solid var(--theme-border) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.theme-forest select {
+  background-color: var(--theme-surface) !important;
+  color: var(--theme-text) !important;
+  border: 2px solid var(--theme-border) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.theme-ocean select {
+  background-color: var(--theme-surface) !important;
+  color: var(--theme-text) !important;
+  border: 2px solid var(--theme-border) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.theme-lavender select {
+  background-color: var(--theme-surface) !important;
+  color: var(--theme-text) !important;
+  border: 2px solid var(--theme-border) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Enhanced table styling */
+.theme-sepia table, .theme-forest table, .theme-ocean table, .theme-lavender table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+.theme-sepia tbody tr:hover, .theme-forest tbody tr:hover, .theme-ocean tbody tr:hover, .theme-lavender tbody tr:hover {
+  background-color: var(--theme-border) !important;
+  transform: scale(1.01) !important;
+  transition: all 300ms ease !important;
+}
+
+/* Enhanced badge styling */
+.theme-sepia .badge-primary, .theme-forest .badge-primary, .theme-ocean .badge-primary, .theme-lavender .badge-primary {
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary)) !important;
+  color: white !important;
+  border: none !important;
+}
+
+/* Modal and backdrop enhancements */
+.modal-backdrop {
+  backdrop-filter: blur(8px) !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Enhanced card shadows and borders */
+.theme-sepia .card, .theme-forest .card, .theme-ocean .card, .theme-lavender .card {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+  border: 2px solid var(--theme-border) !important;
+}
+
+/* Smooth input focus states */
+.theme-sepia input:focus, .theme-forest input:focus, .theme-ocean input:focus, .theme-lavender input:focus,
+.theme-sepia textarea:focus, .theme-forest textarea:focus, .theme-ocean textarea:focus, .theme-lavender textarea:focus,
+.theme-sepia select:focus, .theme-forest select:focus, .theme-ocean select:focus, .theme-lavender select:focus {
+  outline: none !important;
+  border-color: var(--theme-primary) !important;
+  box-shadow: 0 0 0 3px rgba(var(--theme-primary), 0.1) !important;
+  transform: scale(1.02) !important;
+}
+
+/* Enhanced empty state styling */
+.empty-state {
+  background: linear-gradient(135deg, var(--theme-surface, #f8fafc), var(--theme-bg, #ffffff)) !important;
+  border: 2px dashed var(--theme-border, #e2e8f0) !important;
+  border-radius: 1rem !important;
+  padding: 3rem !important;
+}
+
+/* Main app container styling - default (no theme) */
+.app-container {
+  min-height: 100vh;
+  background-color: #fafafa !important;
+  color: #18181b !important;
+}
+
+.dark .app-container {
+  background-color: #09090b !important;
+  color: #fafafa !important;
+}
+
+/* Theme-specific app container backgrounds - Light Mode */
+.theme-sepia .app-container {
+  background-color: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-forest .app-container {
+  background-color: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-ocean .app-container {
+  background-color: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-lavender .app-container {
+  background-color: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+}
+
+/* Theme-specific app container backgrounds - Dark Mode */
+.dark.theme-sepia .app-container {
+  background-color: #1a1612 !important;
+  color: #e5d5bc !important;
+}
+
+.dark.theme-forest .app-container {
+  background-color: #0f1511 !important;
+  color: #ffffff !important;
+}
+
+.dark.theme-ocean .app-container {
+  background-color: #0a1419 !important;
+  color: #bfdbfe !important;
+}
+
+.dark.theme-lavender .app-container {
+  background-color: #151218 !important;
+  color: #e9d5ff !important;
+}
+
+/* Ensure all direct children inherit the theme text color */
+.theme-sepia .app-container > *,
+.theme-forest .app-container > *,
+.theme-ocean .app-container > *,
+.theme-lavender .app-container > * {
+  color: inherit;
+}
+
+/* Micro-interaction animations */
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40%, 43% {
+    transform: translateY(-8px);
+  }
+  70% {
+    transform: translateY(-4px);
+  }
+  90% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes shake {
+  10%, 90% {
+    transform: translateX(-1px);
+  }
+  20%, 80% {
+    transform: translateX(2px);
+  }
+  30%, 50%, 70% {
+    transform: translateX(-4px);
+  }
+  40%, 60% {
+    transform: translateX(4px);
+  }
+}
+
+/* Table row initial state for animation */
+tbody tr {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+/* Enhanced hover effects for interactive elements */
+.hover-lift {
+  transition: all 0.2s ease-out;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Smooth scale animations */
+.scale-on-hover {
+  transition: transform 0.2s ease-out;
+}
+
+.scale-on-hover:hover {
+  transform: scale(1.05);
+}
+
+/* Enhanced button hover effects */
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+/* Theme card text overrides for better readability */
+.theme-sepia .dark\\:text-white,
+.theme-forest .dark\\:text-white,
+.theme-ocean .dark\\:text-white,
+.theme-lavender .dark\\:text-white {
+  color: #ffffff !important;
+}
+
+.theme-sepia .dark\\:text-zinc-300,
+.theme-forest .dark\\:text-zinc-300,
+.theme-ocean .dark\\:text-zinc-300,
+.theme-lavender .dark\\:text-zinc-300 {
+  color: #d1d5db !important;
+}
