@@ -4,7 +4,8 @@
   "description": "Allow core APIs and SQL plugin for the main window in dev and prod",
   "windows": ["main"],
   "urls": [
-    "http://localhost:1420/*"
+    "http://localhost:1420/*",
+    "tauri://localhost/*"
   ],
   "permissions": [
     "core:default",
