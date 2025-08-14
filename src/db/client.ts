@@ -1,5 +1,5 @@
 import Database from '@tauri-apps/plugin-sql'
-import { appConfigDir } from '@tauri-apps/api/path'
+import { appConfigDir, join } from '@tauri-apps/api/path'
 
 let dbPromise: Promise<Database> | null = null
 let overrideDbPath: string | null = null
@@ -45,7 +45,7 @@ export async function getDb(): Promise<Database> {
 async function resolveDatabasePath(): Promise<string> {
   if (overrideDbPath) return overrideDbPath
   const dir = await appConfigDir()
-  return `${dir}localreads.sqlite`
+  return await join(dir, 'localreads.sqlite')
 }
 
 async function initDatabase() {
@@ -91,10 +91,13 @@ async function initDatabase() {
 
     CREATE TABLE IF NOT EXISTS highlights (
       id TEXT PRIMARY KEY,
-      book_id TEXT NOT NULL,
+      book_id TEXT NULL,
       text TEXT NOT NULL,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (book_id) REFERENCES books (id) ON DELETE CASCADE
+      commentary TEXT,
+      source_title TEXT,
+      source_author TEXT,
+      FOREIGN KEY (book_id) REFERENCES books (id) ON DELETE SET NULL
     );
 
     CREATE INDEX IF NOT EXISTS idx_books_title ON books (title);
@@ -120,6 +123,9 @@ async function initDatabase() {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`)
   } catch {}
+
+  // Ensure highlights schema supports standalone gems (Windows fresh DBs may lack these columns)
+  await ensureHighlightsSchemaUpToDate()
 }
 
 export async function execSchema(sql: string) {
@@ -127,11 +133,55 @@ export async function execSchema(sql: string) {
   return db.execute(sql)
 }
 
+async function ensureHighlightsSchemaUpToDate() {
+  const db = await dbPromise
+  if (!db) return
+  try {
+    const columns: any[] = await db.select(`PRAGMA table_info(highlights)`)
+    const colNames = Array.isArray(columns) ? columns.map((c: any) => String(c.name)) : []
+    const hasCommentary = colNames.includes('commentary')
+    const hasSourceTitle = colNames.includes('source_title')
+    const hasSourceAuthor = colNames.includes('source_author')
+    const bookIdCol: any = Array.isArray(columns) ? columns.find((c: any) => String(c.name) === 'book_id') : null
+    const bookIdNotNull = Boolean(bookIdCol?.notnull)
+
+    if (hasCommentary && hasSourceTitle && hasSourceAuthor && !bookIdNotNull) return
+
+    if (!hasCommentary && hasSourceTitle && hasSourceAuthor && !bookIdNotNull) {
+      try { await db.execute(`ALTER TABLE highlights ADD COLUMN commentary TEXT`) } catch {}
+      return
+    }
+
+    await db.execute('BEGIN')
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS highlights_new (
+        id TEXT PRIMARY KEY,
+        book_id TEXT REFERENCES books(id) ON DELETE SET NULL,
+        text TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        commentary TEXT,
+        source_title TEXT,
+        source_author TEXT
+      );
+    `)
+    const copySql = `
+      INSERT INTO highlights_new (id, book_id, text, created_at, commentary)
+      SELECT id, book_id, text, created_at, ${hasCommentary ? 'commentary' : 'NULL'} FROM highlights
+    `
+    await db.execute(copySql)
+    await db.execute('DROP TABLE highlights')
+    await db.execute('ALTER TABLE highlights_new RENAME TO highlights')
+    await db.execute('COMMIT')
+  } catch (_) {
+    try { await (await getDb()).execute('ROLLBACK') } catch {}
+  }
+}
+
 export async function getDatabasePath(): Promise<string> {
   try {
     if (overrideDbPath) return overrideDbPath
     const dir = await appConfigDir()
-    return `${dir}localreads.sqlite`
+    return await join(dir, 'localreads.sqlite')
   } catch {
     return 'localreads.sqlite'
   }

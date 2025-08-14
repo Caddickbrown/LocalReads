@@ -633,7 +633,7 @@ export async function exportHighlightsCsv(): Promise<string> {
   const db = await getDb()
   const rows: any[] = await db.select(`
     SELECT h.id, COALESCE(b.title, h.source_title) AS book, COALESCE(b.author, h.source_author) AS author, h.text, h.created_at, h.commentary
-    FROM highlights h JOIN books b ON b.id = h.book_id
+    FROM highlights h LEFT JOIN books b ON b.id = h.book_id
     ORDER BY h.rowid DESC
   `)
   const headers = ['id','book','author','text','created_at','commentary']
