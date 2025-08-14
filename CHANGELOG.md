@@ -5,6 +5,34 @@ All notable changes to LocalReads will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Upcoming/Potential Additions
+
+- Auto-update experience
+  - Re-enable in-app update checks and installs via Tauri updater (`utils/updater.ts`), with a non-blocking `UpdateNotification` banner and release notes
+- Gems (highlights)
+  - Export to include standalone gems and `source_title`/`source_author`; import to support true standalone gems without creating placeholder books
+  - Inline editing improvements (multi-line input, optional markdown-style formatting)
+- Library & Lists
+  - Saved filters/Smart lists and quick filter presets
+  - Virtualized list rendering for large libraries; batch edit for tags/status/obtained
+- Next Up
+  - Optional drag-and-drop manual ordering; tunable scoring (series continuity boost, deprioritize long-paused)
+- Search
+  - Global search across titles, authors, series, tags, reviews, and gems with fuzzy matching and keyboard navigation
+- Analytics & Goals
+  - Author/series breakdowns, reading pace estimates, progress projections; opt-in achievements/streaks
+- Sync & Backup
+  - One-click data folder selection with automatic scheduled backups; friendlier cloud-folder use via custom DB path
+  - Versioned migrations with safe rollback and integrity checks
+- Accessibility & UX
+  - Improved screen reader labels, focus outlines, and contrast; customizable keyboard shortcuts
+- Theming
+  - Additional color themes and high-contrast mode
+- Integrations
+  - Goodreads/Calibre/OPDS import presets and improved CSV wizards
+- Platform polish
+  - Native app menu (File → Import/Export, View → Toggle Sidebar, Help → Shortcuts)
+
 ## [1.3.0] - 2025-08-14
 
 ### Added

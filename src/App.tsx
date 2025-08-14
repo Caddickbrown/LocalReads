@@ -246,7 +246,7 @@ export default function App(){
                 <div className="p-4 border-b border-zinc-200 dark:border-zinc-700 min-h-[73px] flex items-center">
                   <div className="flex items-center w-full">
                     <div className="flex items-center justify-center w-8 h-8 flex-shrink-0">
-                      <img src="/src-tauri/icons/icon.png" alt="LocalReads" className="w-8 h-8 rounded" />
+                      <img src={new URL('../src-tauri/icons/icon.png', import.meta.url).href} alt="LocalReads" className="w-8 h-8 rounded" />
                     </div>
                     <div className={`ml-3 overflow-hidden sidebar-text-slide ${
                       sidebarExpanded ? 'opacity-100 max-w-xs delay-150 transform translate-x-0' : 'opacity-0 max-w-0 delay-0 transform -translate-x-2'
