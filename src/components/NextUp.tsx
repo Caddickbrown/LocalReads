@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { BookOpen, Clock, Star, ArrowUp, ArrowDown, Calendar, User, Hash, Edit3, X, Trash2 } from 'lucide-react'
+import { BookOpen, Clock, Star, ArrowUp, ArrowDown, Calendar, User, Hash, Search } from 'lucide-react'
 import type { Book, Read } from '@/types'
 import { listBooks, toggleNextUpPriority } from '@/db/repo'
-import { Card, CardHeader, CardContent, Button, Badge, EmptyState, Spinner, ProgressBar } from './ui'
+import { Card, CardHeader, CardContent, Button, Badge, EmptyState, Spinner, ProgressBar, Input } from './ui'
 import EditDialog from './EditDialog'
 
 interface NextUpBook extends Book {
@@ -19,7 +19,7 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [editingBook, setEditingBook] = useState<Book | null>(null)
-  const [editMode, setEditMode] = useState(false)
+  const [q, setQ] = useState('')
 
   useEffect(() => {
     loadNextUpBooks()
@@ -84,8 +84,23 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
     }
   }
 
+  const filteredBooks = useMemo(() => {
+    const query = q.trim().toLowerCase()
+    if (!query) return books
+    return books.filter((b) => {
+      const haystack = [
+        b.title,
+        b.author,
+        b.series_name || '',
+        ...(Array.isArray((b as any).series) ? ((b as any).series as any[]).map((s: any) => s?.name || '') : []),
+        ...(Array.isArray(b.tags) ? b.tags : [])
+      ].join(' ').toLowerCase()
+      return haystack.includes(query)
+    })
+  }, [books, q])
+
   const sortedBooks = useMemo(() => {
-    return [...books].sort((a, b) => {
+    return [...filteredBooks].sort((a, b) => {
       let aVal: any, bVal: any
       
       switch (sortBy) {
@@ -123,7 +138,7 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
         return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal)
       }
     })
-  }, [books, sortBy, sortOrder])
+  }, [filteredBooks, sortBy, sortOrder])
 
   const handleSortChange = (newSortBy: typeof sortBy) => {
     if (sortBy === newSortBy) {
@@ -146,19 +161,7 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
     loadNextUpBooks()
   }
 
-  const handleRemoveFromNextUp = async (book: NextUpBook) => {
-    if (confirm(`Remove "${book.title}" from your Next Up list? This will change its status to "Finished" or "Abandoned".`)) {
-      try {
-        // For now, we'll just trigger a refresh and let the user manually change the status
-        // In the future, you could add logic to automatically change status
-        setEditingBook(book)
-        setShowEditDialog(true)
-      } catch (error) {
-        console.error('Error removing from Next Up:', error)
-        alert('Error removing book from Next Up. Please try again.')
-      }
-    }
-  }
+  
 
   return (
     <Card>
@@ -173,24 +176,17 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
               Your reading queue, prioritized by engagement and context
             </p>
           </div>
-          <Button
-            onClick={() => setEditMode(!editMode)}
-            variant={editMode ? 'primary' : 'secondary'}
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            {editMode ? (
-              <>
-                <X className="w-4 h-4" />
-                Done
-              </>
-            ) : (
-              <>
-                <Edit3 className="w-4 h-4" />
-                Manage
-              </>
-            )}
-          </Button>
+          <div className="w-64">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search Next Up"
+                className="pl-9"
+              />
+            </div>
+          </div>
         </div>
         
         {/* Sorting Controls */}
@@ -248,10 +244,8 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
             {sortedBooks.map((book, index) => (
               <div 
                 key={book.id} 
-                className={`bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 hover:shadow-md transition-all duration-300 hover:border-indigo-300 dark:hover:border-indigo-600 group ${
-                  !editMode ? 'cursor-pointer' : ''
-                }`}
-                onClick={!editMode ? () => handleEditBook(book) : undefined}
+                className={`bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 hover:shadow-md transition-all duration-300 hover:border-indigo-300 dark:hover:border-indigo-600 group cursor-pointer`}
+                onClick={() => handleEditBook(book)}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0 mr-4">
@@ -281,10 +275,16 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
                     <p className="text-zinc-600 dark:text-zinc-400 truncate mb-1">
                       {book.author}
                     </p>
-                    {book.series_name && (
-                      <p className="text-sm text-zinc-500 dark:text-zinc-500 truncate">
-                        {book.series_name}
-                        {book.series_number && ` #${book.series_number}`}
+                    {(book.series_name || (book as any).series?.length) && (
+                      <p className="text-sm text-zinc-500 dark:text-zinc-500 truncate" title={[book.series_name && (book.series_number ? `${book.series_name} #${book.series_number}` : book.series_name), ...(((book as any).series||[]) as any[]).map((s:any) => s.number ? `${s.name} #${s.number}` : s.name)].filter(Boolean).join(' • ')}>
+                        {book.series_name || ((book as any).series?.[0]?.name)}
+                        {(() => {
+                          const n = (book.series_number != null ? book.series_number : (book as any).series?.[0]?.number) as number | undefined | null
+                          return n && n > 0 ? ` #${n}` : ''
+                        })()}
+                        {(book as any).series?.length && ((book.series_name ? (book as any).series.length : Math.max(0, (book as any).series.length - 1)) > 0) && (
+                          <span className="ml-1 opacity-70">+{book.series_name ? (book as any).series.length : ((book as any).series.length - 1)}</span>
+                        )}
                       </p>
                     )}
                   </div>
@@ -318,34 +318,7 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
                       </label>
                     </div>
                     
-                    {editMode && (
-                      <div className="flex gap-1 mb-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleEditBook(book)
-                          }}
-                          className="p-1 hover:scale-110 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200"
-                          title="Edit book"
-                        >
-                          <Edit3 className="w-3 h-3 text-blue-600" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleRemoveFromNextUp(book)
-                          }}
-                          className="p-1 hover:scale-110 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200"
-                          title="Remove from Next Up"
-                        >
-                          <Trash2 className="w-3 h-3 text-red-600" />
-                        </Button>
-                      </div>
-                    )}
+                    
                     <Badge 
                       variant={book.status === 'Paused' ? 'warning' : 'default'} 
                       size="sm"

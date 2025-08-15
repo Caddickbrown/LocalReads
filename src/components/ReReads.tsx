@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { RefreshCw, Calendar, Star, ArrowUp, ArrowDown, BookOpen, Clock } from 'lucide-react'
+import { RefreshCw, Calendar, Star, ArrowUp, ArrowDown, BookOpen, Clock, Search } from 'lucide-react'
 import type { Book, Read } from '@/types'
 import { listBooks, readsForBook } from '@/db/repo'
-import { Card, CardHeader, CardContent, Button, Badge, EmptyState, Spinner } from './ui'
+import { Card, CardHeader, CardContent, Button, Badge, EmptyState, Spinner, Input } from './ui'
 
 interface ReReadBook extends Book {
   tags: string[]
@@ -16,6 +16,7 @@ export default function ReReads({ onBack }: { onBack: () => void }) {
   const [isLoading, setIsLoading] = useState(true)
   const [sortBy, setSortBy] = useState<'read_count' | 'latest_read' | 'title' | 'author' | 'rating'>('read_count')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [q, setQ] = useState('')
 
   useEffect(() => {
     loadReReadBooks()
@@ -52,8 +53,23 @@ export default function ReReads({ onBack }: { onBack: () => void }) {
     }
   }
 
+  const filteredBooks = useMemo(() => {
+    const query = q.trim().toLowerCase()
+    if (!query) return books
+    return books.filter((b) => {
+      const haystack = [
+        b.title,
+        b.author,
+        b.series_name || '',
+        ...(Array.isArray((b as any).series) ? ((b as any).series as any[]).map((s: any) => s?.name || '') : []),
+        ...(Array.isArray(b.tags) ? b.tags : [])
+      ].join(' ').toLowerCase()
+      return haystack.includes(query)
+    })
+  }, [books, q])
+
   const sortedBooks = useMemo(() => {
-    return [...books].sort((a, b) => {
+    return [...filteredBooks].sort((a, b) => {
       let aVal: any, bVal: any
       
       switch (sortBy) {
@@ -91,7 +107,7 @@ export default function ReReads({ onBack }: { onBack: () => void }) {
         return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal)
       }
     })
-  }, [books, sortBy, sortOrder])
+  }, [filteredBooks, sortBy, sortOrder])
 
   const handleSortChange = (newSortBy: typeof sortBy) => {
     if (sortBy === newSortBy) {
@@ -136,6 +152,17 @@ export default function ReReads({ onBack }: { onBack: () => void }) {
             <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
               Books you've read multiple times, with complete reading history
             </p>
+          </div>
+          <div className="w-64">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search Re-reads"
+                className="pl-9"
+              />
+            </div>
           </div>
         </div>
         
@@ -209,10 +236,16 @@ export default function ReReads({ onBack }: { onBack: () => void }) {
                       <p className="text-zinc-600 dark:text-zinc-400 mb-1">
                         by {book.author}
                       </p>
-                      {book.series_name && (
-                        <p className="text-sm text-zinc-500 dark:text-zinc-500">
-                          {book.series_name}
-                          {book.series_number && ` #${book.series_number}`}
+                      {(book.series_name || (book as any).series?.length) && (
+                        <p className="text-sm text-zinc-500 dark:text-zinc-500" title={[book.series_name && (book.series_number ? `${book.series_name} #${book.series_number}` : book.series_name), ...(((book as any).series||[]) as any[]).map((s:any) => s.number ? `${s.name} #${s.number}` : s.name)].filter(Boolean).join(' • ')}>
+                          {book.series_name || ((book as any).series?.[0]?.name)}
+                          {(() => {
+                            const n = (book.series_number != null ? book.series_number : (book as any).series?.[0]?.number) as number | undefined | null
+                            return n && n > 0 ? ` #${n}` : ''
+                          })()}
+                          {(book as any).series?.length && ((book.series_name ? (book as any).series.length : Math.max(0, (book as any).series.length - 1)) > 0) && (
+                            <span className="ml-1 opacity-70">+{book.series_name ? (book as any).series.length : ((book as any).series.length - 1)}</span>
+                          )}
                         </p>
                       )}
                     </div>

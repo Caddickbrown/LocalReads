@@ -5,6 +5,8 @@ All notable changes to LocalReads will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
 ## Upcoming/Potential Additions
 
 - Auto-update experience
@@ -32,6 +34,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Goodreads/Calibre/OPDS import presets and improved CSV wizards
 - Platform polish
   - Native app menu (File → Import/Export, View → Toggle Sidebar, Help → Shortcuts)
+
+## [1.4.0] - 2025-08-15
+
+### Added
+- Multiple authors per book
+  - Use ';' to separate authors in the `Author` field; UI hint added
+  - Author suggestions can be appended to the list with a click
+  - Global search already matches by any substring in authors
+- Authors view
+  - New `Authors` section lists all authors with book counts
+  - Click an author to jump back to Library filtered by that author
+  - Keyboard shortcut: Ctrl/Cmd + A
+- Multi-series support (with aligned numbers)
+  - Added structured multi-series in the editor via an "Other Series" repeater (name + number)
+  - Primary series remains as `series_name` + `series_number` for sorting/search
+  - Library/Next Up/Re-reads display primary series, with +N indicator and tooltip listing all series
+- Multiple formats per book
+  - Repeatable “Formats” editor: choose format and obtained per entry
+  - New obtained option: On Order
+  - First format acts as primary for legacy display/sorting
+  - Persisted in `books.formats_json`; primary format still mirrored to `type`/`obtained`
+- Comments field on books
+  - Freeform notes field in the editor
+  - Persisted in DB (`books.comments`) and included in CSV import/export
+- Series suggestions for “Other Series” rows (per-row typeahead)
+- Desktop: Integrated `Authors` view into the main content area, matching mobile parity
+- Title mapping updated so the page header displays "Authors" when active
+- Selecting an author now routes back to `Library` with the global search prefilled to show that author's books (works on desktop and mobile)
+
+### Changed
+- Data model and persistence
+  - Added `books.series_json` (JSON array of `{ name, number }`) to store additional series
+  - Repo now reads/writes `series_json` while preserving `series_name/series_number`
+  - JSON export/import updated to include `series_json`
+  - Automatic migration adds `series_json` to existing databases
+- Search & suggestions
+  - Author suggestion backend splits on ';' and ',' and de-duplicates
+- Duplicate detection
+  - Title+author merge key now normalizes multi-author strings (split/trim/sort)
+- Edit dialog layout
+  - Moved Formats below Status/Next Up into its own row
+  - Obtained checkboxes are inline on the same line as the Format dropdown
+  - Hide the delete (✕) control for the first/primary format
+- Author suggestions
+  - Clicking a suggestion now replaces only the last typed token after the final ';'
+- Library: Filters panel narrowed on desktop (from 3 to 2 grid columns) to free more space for the table
+- Edit dialog: Format dropdowns are now narrower and use proportional widths for better layout
+
+### Database & Import/Export
+- Migration adds `books.comments` and `books.formats_json`
+- CSV export/import updated to include a `comments` column
+
+### Fixed
+- Edit dialog: Toggling "Obtained" no longer changes the selected format; fields are updated independently
+
+### Notes
+- Backward compatible: existing data using only `series_name/series_number` continues to work
+- Sorting/search still use the primary series; additional series are displayed and exported
 
 ## [1.3.0] - 2025-08-14
 

@@ -6,6 +6,7 @@ import Highlights from '@/components/Highlights'
 import Settings from '@/components/Settings'
 import NextUp from '@/components/NextUp'
 import ReReads from '@/components/ReReads'
+import Authors from '@/components/Authors'
 import KeyboardShortcutsHelp from '@/components/KeyboardShortcutsHelp'
 // import UpdateNotification from '@/components/UpdateNotification'
 import { useTheme } from '@/hooks/useTheme'
@@ -17,7 +18,7 @@ const isMac = typeof window !== 'undefined' && navigator.platform.toUpperCase().
 
 export default function App(){
   const { dark, mode, setMode, extraTheme, setExtraTheme } = useTheme()
-  const [view, setView] = useState<'library'|'dashboard'|'highlights'|'nextup'|'rereads'>('library')
+  const [view, setView] = useState<'library'|'dashboard'|'highlights'|'nextup'|'rereads'|'authors'>('library')
   const [refresh, setRefresh] = useState(0)
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -45,6 +46,12 @@ export default function App(){
       ...(isMac ? { metaKey: true } : { ctrlKey: true }),
       action: () => setView('highlights'),
       description: 'Go to Gems'
+    },
+    {
+      key: 'a',
+      ...(isMac ? { metaKey: true } : { ctrlKey: true }),
+      action: () => setView('authors'),
+      description: 'Go to Authors'
     },
 
     {
@@ -119,6 +126,9 @@ export default function App(){
       case 'highlights':
         crumbs.push({ label: 'Gems' })
         break
+      case 'authors':
+        crumbs.push({ label: 'Authors' })
+        break
       case 'nextup':
         crumbs.push({ label: 'Next Up' })
         break
@@ -143,6 +153,13 @@ export default function App(){
     
     window.addEventListener('update-breadcrumb', handleBreadcrumbUpdate)
     return () => window.removeEventListener('update-breadcrumb', handleBreadcrumbUpdate)
+  }, [])
+
+  // Listen for global search clear requests from children
+  useEffect(() => {
+    const handleClearGlobalSearch = () => setGlobalSearch('')
+    window.addEventListener('clear-global-search', handleClearGlobalSearch as EventListener)
+    return () => window.removeEventListener('clear-global-search', handleClearGlobalSearch as EventListener)
   }, [])
 
   // Update breadcrumb context based on global search
@@ -191,6 +208,12 @@ export default function App(){
               {view==='highlights' && <Highlights onBack={()=>setView('library')} />}
               {view==='nextup' && <NextUp onBack={()=>setView('library')} />}
               {view==='rereads' && <ReReads onBack={()=>setView('library')} />}
+              {view==='authors' && (
+                <Authors 
+                  onBack={()=>setView('library')}
+                  onSelectAuthor={(name)=>{ setView('library'); setGlobalSearch(name); }}
+                />
+              )}
             </div>
           </div>
 
@@ -283,6 +306,14 @@ export default function App(){
                   extraTheme={extraTheme}
                 />
                 <SidebarButton 
+                  active={view==='authors'} 
+                  onClick={()=>setView('authors')} 
+                  icon="👤" 
+                  label="Authors" 
+                  expanded={sidebarExpanded}
+                  extraTheme={extraTheme}
+                />
+                <SidebarButton 
                   active={view==='nextup'} 
                   onClick={()=>setView('nextup')} 
                   icon="🧭" 
@@ -349,7 +380,15 @@ export default function App(){
                   
                   {/* Page Title */}
                   <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 capitalize">
-                    {view === 'nextup' ? 'Next Up' : view === 'rereads' ? 'Re-reads' : view === 'highlights' ? 'Gems' : view}
+                    {view === 'nextup' 
+                      ? 'Next Up' 
+                      : view === 'rereads' 
+                      ? 'Re-reads' 
+                      : view === 'highlights' 
+                      ? 'Gems' 
+                      : view === 'authors'
+                      ? 'Authors'
+                      : view}
                   </h2>
                 </div>
             
@@ -385,6 +424,12 @@ export default function App(){
                 {view==='highlights' && <Highlights onBack={()=>setView('library')} />}
                 {view==='nextup' && <NextUp onBack={()=>setView('library')} />}
                 {view==='rereads' && <ReReads onBack={()=>setView('library')} />}
+                {view==='authors' && (
+                  <Authors 
+                    onBack={()=>setView('library')}
+                    onSelectAuthor={(name)=>{ setView('library'); setGlobalSearch(name); }}
+                  />
+                )}
               </div>
             </div>
           </div>

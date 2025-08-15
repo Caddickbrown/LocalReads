@@ -60,9 +60,12 @@ async function initDatabase() {
       author TEXT NOT NULL,
       series_name TEXT,
       series_number INTEGER,
+      series_json TEXT,
       obtained TEXT,
       type TEXT NOT NULL DEFAULT 'Book',
-      status TEXT NOT NULL DEFAULT 'To Read'
+      status TEXT NOT NULL DEFAULT 'To Read',
+      comments TEXT,
+      formats_json TEXT
     );
 
     CREATE TABLE IF NOT EXISTS tags (
@@ -114,6 +117,9 @@ async function initDatabase() {
   try { await db.execute(`ALTER TABLE reads ADD COLUMN total_pages INTEGER DEFAULT 0`) } catch {}
   try { await db.execute(`ALTER TABLE reads ADD COLUMN progress_percentage INTEGER DEFAULT 0`) } catch {}
   try { await db.execute(`ALTER TABLE books ADD COLUMN next_up_priority BOOLEAN DEFAULT FALSE`) } catch {}
+  try { await db.execute(`ALTER TABLE books ADD COLUMN series_json TEXT`) } catch {}
+  try { await db.execute(`ALTER TABLE books ADD COLUMN comments TEXT`) } catch {}
+  try { await db.execute(`ALTER TABLE books ADD COLUMN formats_json TEXT`) } catch {}
   try { 
     await db.execute(`CREATE TABLE IF NOT EXISTS reading_goals (
       id TEXT PRIMARY KEY,

@@ -6,9 +6,12 @@ CREATE TABLE IF NOT EXISTS books (
   author TEXT NOT NULL,
   series_name TEXT,
   series_number INTEGER,
+  series_json TEXT,
   obtained TEXT,
   type TEXT NOT NULL,
   status TEXT NOT NULL,
+  comments TEXT,
+  formats_json TEXT,
   next_up_priority BOOLEAN DEFAULT FALSE
 );
 

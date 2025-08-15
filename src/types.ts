@@ -4,7 +4,7 @@ export const BOOK_TYPES = [
   "Ebook",
   "Comic",
   "Graphic Novel",
-  "Art Book"
+  "Art/Photography Book"
 ] as const;
 export const STATUSES = ["To Read", "Reading", "Paused", "Finished", "Abandoned"] as const;
 export type BookType = typeof BOOK_TYPES[number];
@@ -29,10 +29,15 @@ export type Book = {
   author: string;
   series_name?: string;
   series_number?: number | null;
-  obtained?: 'Owned' | 'Borrowed' | 'Library' | 'Wishlist' | null;
+  // Full multi-series support; first item is treated as primary for sorting/display
+  series?: Array<{ name: string; number?: number | null }>;
+  obtained?: 'Owned' | 'Borrowed' | 'Library' | 'Wishlist' | 'On Order' | null;
   type: BookType;
   status: Status;
   next_up_priority?: boolean;
+  comments?: string;
+  // Multiple formats owned/available for this book (first item acts as primary)
+  formats?: Array<{ format: BookType; obtained?: 'Owned' | 'Borrowed' | 'Library' | 'Wishlist' | 'On Order' | null }>
 }
 
 export type Highlight = { id: string; book_id: string; text: string };

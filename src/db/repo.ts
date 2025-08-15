@@ -65,23 +65,62 @@ export async function listBooks(opts?: {
   ORDER BY b.title COLLATE NOCASE ASC;
   `
   const rows: any[] = await db.select(qp(sql), params)
-  return rows.map((r: any) => ({
-    id: r.id, title: r.title, author: r.author, series_name: r.series_name,
-    series_number: r.series_number, obtained: r.obtained, type: r.type, status: r.status,
-    next_up_priority: Boolean(r.next_up_priority),
-    tags: r.tag_names ? String(r.tag_names).split(',') : [],
-    reads_count: Number(r.reads_count || 0),
-    highlightsCount: Number(r.highlights_count || 0),
-    latest: r.latest ? JSON.parse(r.latest) : null,
-  }))
+  return rows.map((r: any) => {
+    const series: Array<{ name: string; number?: number | null }> = []
+    const formats: Array<{ format: string; obtained?: string | null }> = []
+    // Parse additional series from series_json if present
+    try {
+      const parsed = r.series_json ? JSON.parse(String(r.series_json)) : []
+      if (Array.isArray(parsed)) {
+        for (const it of parsed) {
+          if (it && typeof it === 'object' && it.name) {
+            series.push({ name: String(it.name), number: it.number != null ? Number(it.number) : null })
+          }
+        }
+      }
+    } catch {}
+    // Parse formats
+    try {
+      const parsedF = r.formats_json ? JSON.parse(String(r.formats_json)) : []
+      if (Array.isArray(parsedF)) {
+        for (const it of parsedF) {
+          if (it && typeof it === 'object' && it.format) {
+            formats.push({ format: String(it.format), obtained: it.obtained != null ? String(it.obtained) : null })
+          }
+        }
+      }
+    } catch {}
+
+    return {
+      id: r.id,
+      title: r.title,
+      author: r.author,
+      series_name: r.series_name,
+      series_number: r.series_number,
+      series,
+      obtained: r.obtained,
+      type: r.type,
+      status: r.status,
+      comments: r.comments ?? null,
+      formats,
+      next_up_priority: Boolean(r.next_up_priority),
+      tags: r.tag_names ? String(r.tag_names).split(',') : [],
+      reads_count: Number(r.reads_count || 0),
+      highlightsCount: Number(r.highlights_count || 0),
+      latest: r.latest ? JSON.parse(r.latest) : null,
+    } as Book & { tags: string[]; reads_count: number; latest?: Read | null }
+  })
 }
 
 // -------- Search helpers --------
 export async function searchAuthors(q: string): Promise<string[]> {
   const db = await getDb()
   const like = `%${q.toLowerCase()}%`
-  const rows: any[] = await db.select(qp(`SELECT DISTINCT author FROM books WHERE lower(author) LIKE ? ORDER BY author COLLATE NOCASE LIMIT 20`), [like])
-  return rows.map((r: any) => r.author).filter(Boolean)
+  const rows: any[] = await db.select(qp(`SELECT DISTINCT author FROM books WHERE lower(author) LIKE ? ORDER BY author COLLATE NOCASE LIMIT 200`), [like])
+  const split = (s: string) => s.split(/[;,]/).map((x: string) => x.trim()).filter(Boolean)
+  const all = rows.flatMap((r: any) => split(String(r.author || '')))
+  const uniq = Array.from(new Set(all))
+  return uniq
 }
 
 export async function searchSeries(q: string): Promise<string[]> {
@@ -105,12 +144,18 @@ export async function upsertBook(b: Partial<Book> & { id?: string }) {
   const id = b.id || uid()
   console.log('Generated/using ID:', id)
   
-  const sql = qp(`INSERT INTO books (id, title, author, series_name, series_number, obtained, type, status, next_up_priority)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  const sql = qp(`INSERT INTO books (id, title, author, series_name, series_number, series_json, obtained, type, status, comments, formats_json, next_up_priority)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
-       title=?, author=?, series_name=?, series_number=?, obtained=?, type=?, status=?, next_up_priority=?`)
-  const params = [id, b.title, b.author, b.series_name ?? null, b.series_number ?? null, b.obtained ?? null, b.type, b.status, b.next_up_priority ? 1 : 0,
-     b.title, b.author, b.series_name ?? null, b.series_number ?? null, b.obtained ?? null, b.type, b.status, b.next_up_priority ? 1 : 0]
+       title=?, author=?, series_name=?, series_number=?, series_json=?, obtained=?, type=?, status=?, comments=?, formats_json=?, next_up_priority=?`)
+  const seriesJson = (b.series && Array.isArray(b.series) && b.series.length)
+    ? JSON.stringify(b.series.filter(s => s && s.name).map(s => ({ name: s.name, number: s.number ?? null })))
+    : null
+  const formatsJson = (b.formats && Array.isArray(b.formats) && b.formats.length)
+    ? JSON.stringify(b.formats.filter(f => f && f.format).map(f => ({ format: f.format, obtained: f.obtained ?? null })))
+    : null
+  const params = [id, b.title, b.author, b.series_name ?? null, b.series_number ?? null, seriesJson, b.obtained ?? null, b.type, b.status, b.comments ?? null, formatsJson, b.next_up_priority ? 1 : 0,
+     b.title, b.author, b.series_name ?? null, b.series_number ?? null, seriesJson, b.obtained ?? null, b.type, b.status, b.comments ?? null, formatsJson, b.next_up_priority ? 1 : 0]
   
   console.log('Executing SQL:', sql)
   console.log('With parameters:', params)
@@ -535,10 +580,10 @@ export async function getCurrentGoalStatus() {
 const csvEsc = (s: string) => '"' + String(s).split('"').join('""') + '"'
 export async function exportCsvFor(rows: any[]) {
   const headers = [
-    'title','author','seriesName','seriesNumber','obtained','type','status','tags','latestStart','latestEnd','latestRating','latestReview','highlightsCount'
+    'title','author','seriesName','seriesNumber','obtained','type','status','comments','tags','latestStart','latestEnd','latestRating','latestReview','highlightsCount'
   ]
   const body = rows.map((b: any) => [
-    b.title, b.author, b.series_name||'', b.series_number??'', b.obtained??'', b.type, b.status,
+    b.title, b.author, b.series_name||'', b.series_number??'', b.obtained??'', b.type, b.status, b.comments||'',
     (b.tags||[]).join(';'),
     b.latest?.start_date||'', b.latest?.end_date||'', b.latest?.rating??'', b.latest?.review||'',
     b.highlightsCount ?? 0
@@ -566,6 +611,7 @@ export async function importCsv(text: string) {
     const obtained = cells[idx('obtained')]||null
     const type = (cells[idx('type')]||'Book')
     const status = (cells[idx('status')]||'To Read')
+    const comments = (idx('comments')>=0 ? (cells[idx('comments')]||null) : null)
     const tags = (cells[idx('tags')]||'').split(';').filter(Boolean)
     const latestStart = cells[idx('latestStart')]||null
     const latestEnd = cells[idx('latestEnd')]||null
@@ -573,7 +619,7 @@ export async function importCsv(text: string) {
     const latestReview = cells[idx('latestReview')]||null
 
     const id = Math.random().toString(36).slice(2,10)
-    await upsertBook({ id, title, author, series_name: seriesName||undefined, series_number: seriesNumber||undefined, obtained: obtained as any, type: type as any, status: status as any })
+    await upsertBook({ id, title, author, series_name: seriesName||undefined, series_number: seriesNumber||undefined, obtained: obtained as any, type: type as any, status: status as any, comments: comments || undefined })
     // tags
     await setTagsForBook(id, tags)
     // read
@@ -605,8 +651,8 @@ export async function importJson(text: string) {
   await db.execute('DELETE FROM books')
   for (const b of (data.books||[])) {
     await db.execute(
-      qp(`INSERT INTO books (id, title, author, series_name, series_number, obtained, type, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`),
-      [b.id, b.title, b.author, b.series_name ?? null, b.series_number ?? null, b.obtained ?? null, b.type, b.status]
+      qp(`INSERT INTO books (id, title, author, series_name, series_number, series_json, obtained, type, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+      [b.id, b.title, b.author, b.series_name ?? null, b.series_number ?? null, b.series_json ?? null, b.obtained ?? null, b.type, b.status]
     )
   }
   for (const t of (data.tags||[])) {

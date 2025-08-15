@@ -42,20 +42,34 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
   const [statusMsg, setStatusMsg] = useState<string>('')
   const [authorSuggestions, setAuthorSuggestions] = useState<string[]>([])
   const [seriesSuggestions, setSeriesSuggestions] = useState<string[]>([])
+  const [otherSeriesSuggestions, setOtherSeriesSuggestions] = useState<string[]>([])
+  const [otherSeriesFocusedIndex, setOtherSeriesFocusedIndex] = useState<number | null>(null)
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
   const [showAuthorSuggestions, setShowAuthorSuggestions] = useState(false)
   const [showSeriesSuggestions, setShowSeriesSuggestions] = useState(false)
+  const [showOtherSeriesSuggestions, setShowOtherSeriesSuggestions] = useState(false)
+  const [formats, setFormats] = useState<Array<{ format: any; obtained?: any }>>([])
   const [showTagSuggestions, setShowTagSuggestions] = useState(false)
 
   useEffect(() => {
     if (book) {
       setFormData(book)
+      // Initialize formats list from formData or book
+      try {
+        const initial: Array<{ format: any; obtained?: any }> = (book as any).formats || []
+        setFormats(initial)
+      } catch { setFormats([]) }
       // Load existing reads
       loadReadData(book.id)
       // Load existing tags
       loadTags(book.id)
     }
   }, [book])
+
+  // Keep formData.formats in sync with local formats state
+  useEffect(() => {
+    handleInputChange('formats' as any, formats as any)
+  }, [formats])
 
   const loadReadData = async (bookId: string) => {
     try {
@@ -102,8 +116,9 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
     const t = setTimeout(async () => {
       try {
         if (!authorFocused) { setAuthorSuggestions([]); return }
-        const q = (formData.author || '').trim()
-        if (q) setAuthorSuggestions(await searchAuthors(q))
+        const raw = String(formData.author || '')
+        const last = raw.split(';').slice(-1)[0].trim()
+        if (last) setAuthorSuggestions(await searchAuthors(last))
         else setAuthorSuggestions([])
       } catch {}
     }, 200)
@@ -121,6 +136,21 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
     }, 200)
     return () => clearTimeout(t)
   }, [formData.series_name, seriesFocused])
+
+  // Suggestions for Other Series rows
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      try {
+        if (otherSeriesFocusedIndex == null) { setOtherSeriesSuggestions([]); return }
+        const s = (formData.series || [])
+        const current = s[otherSeriesFocusedIndex]
+        const q = (current?.name || '').trim()
+        if (q) setOtherSeriesSuggestions(await searchSeries(q))
+        else setOtherSeriesSuggestions([])
+      } catch {}
+    }, 200)
+    return () => clearTimeout(t)
+  }, [formData.series, otherSeriesFocusedIndex])
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -247,13 +277,29 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
                 onFocus={() => setAuthorFocused(true)}
                 onBlur={() => setTimeout(() => setAuthorFocused(false), 150)}
                 onKeyDown={(e)=>{ if(e.key==='Enter'){ e.preventDefault(); handleSubmit(e as any)} }}
-                placeholder="Author name"
+                placeholder="Author name(s); separate multiple with ;"
                 required
               />
+              <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Use ";" to separate multiple authors</div>
               {authorSuggestions.length > 0 && (
                 <div className="mt-1 flex flex-wrap gap-2 text-xs">
                   {authorSuggestions.slice(0,6).map(name => (
-                    <button type="button" key={name} onClick={() => handleInputChange('author', name)} className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700">
+                    <button type="button" key={name} onClick={() => {
+                      const existing = String(formData.author || '')
+                      const parts = existing.split(';')
+                        .map(s => s.trim())
+                        .filter((s, i, arr) => !(i === arr.length - 1 && s === ''))
+                      if (parts.length === 0) {
+                        handleInputChange('author', name)
+                      } else if (existing.indexOf(';') === -1) {
+                        // single token, replace entirely
+                        handleInputChange('author', name)
+                      } else {
+                        // replace last token with selection
+                        parts[parts.length - 1] = name
+                        handleInputChange('author', parts.join('; '))
+                      }
+                    }} className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700">
                       {name}
                     </button>
                   ))}
@@ -262,45 +308,108 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
             </div>
           </div>
 
-          {/* Series Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Series Name</label>
-              <Input
-                value={formData.series_name || ''}
-                onChange={(e) => handleInputChange('series_name', e.target.value)}
-                onFocus={() => setSeriesFocused(true)}
-                onBlur={() => setTimeout(() => setSeriesFocused(false), 150)}
-                placeholder="Series name (optional)"
-              />
-              {seriesSuggestions.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-2 text-xs">
-                  {seriesSuggestions.slice(0,6).map(name => (
-                    <button type="button" key={name} onClick={() => handleInputChange('series_name', name)} className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700">
-                      {name}
-                    </button>
-                  ))}
-                </div>
-              )}
+          {/* Series Information (multiple) */}
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Primary Series Name</label>
+                <Input
+                  value={formData.series_name || ''}
+                  onChange={(e) => handleInputChange('series_name', e.target.value)}
+                  onFocus={() => setSeriesFocused(true)}
+                  onBlur={() => setTimeout(() => setSeriesFocused(false), 150)}
+                  placeholder="Series name (optional)"
+                />
+                {seriesSuggestions.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-2 text-xs">
+                    {seriesSuggestions.slice(0,6).map(name => (
+                      <button type="button" key={name} onClick={() => handleInputChange('series_name', name)} className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700">
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Primary Series Number</label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={formData.series_number || ''}
+                  onChange={(e) => handleInputChange('series_number', e.target.value ? parseInt(e.target.value) : null)}
+                  placeholder="Book number in series"
+                />
+              </div>
             </div>
-            
             <div>
-              <label className="block text-sm font-medium mb-2">Series Number</label>
-              <Input
-                type="number"
-                min="1"
-                value={formData.series_number || ''}
-                onChange={(e) => handleInputChange('series_number', e.target.value ? parseInt(e.target.value) : null)}
-                placeholder="Book number in series"
-              />
+              <label className="block text-sm font-medium mb-2">Other Series (optional)</label>
+              <div className="space-y-2">
+                {(formData.series || []).map((s, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-2">
+                    <div className="col-span-8">
+                      <Input
+                        value={s.name || ''}
+                        onChange={(e)=>{
+                          const next = [...(formData.series||[])]
+                          next[idx] = { ...next[idx], name: e.target.value }
+                          handleInputChange('series', next)
+                        }}
+                        onFocus={() => { setOtherSeriesFocusedIndex(idx); setShowOtherSeriesSuggestions(true) }}
+                        onBlur={() => setTimeout(() => { setOtherSeriesFocusedIndex(prev => (prev === idx ? null : prev)); setShowOtherSeriesSuggestions(false) }, 150)}
+                        placeholder="Series name"
+                      />
+                      {showOtherSeriesSuggestions && otherSeriesFocusedIndex === idx && otherSeriesSuggestions.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-2 text-xs">
+                          {otherSeriesSuggestions.slice(0,6).map(name => (
+                            <button type="button" key={name} onClick={() => {
+                              const next = [...(formData.series||[])]
+                              next[idx] = { ...next[idx], name }
+                              handleInputChange('series', next)
+                            }} className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700">
+                              {name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-span-3">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={s.number ?? ''}
+                        onChange={(e)=>{
+                          const next = [...(formData.series||[])]
+                          next[idx] = { ...next[idx], number: e.target.value ? parseInt(e.target.value) : null }
+                          handleInputChange('series', next)
+                        }}
+                        placeholder="#"
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <Button type="button" variant="secondary" onClick={()=>{
+                        const next = [...(formData.series||[])]
+                        next.splice(idx,1)
+                        handleInputChange('series', next)
+                      }}>✕</Button>
+                    </div>
+                  </div>
+                ))}
+                <Button type="button" variant="secondary" onClick={()=>{
+                  const next = [...(formData.series||[]), { name: '', number: null }]
+                  handleInputChange('series', next)
+                }}>+ Add Series</Button>
+              </div>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Primary series is used for sorting; others are stored and shown on details.</p>
             </div>
           </div>
 
           {/* Book Details */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">Status</label>
               <Select
+                className="w-1/2"
                 value={formData.status || 'To Read'}
                 onChange={(e) => handleInputChange('status', e.target.value)}
               >
@@ -325,22 +434,73 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
                 Books marked as Next Up will always appear at the top of your reading queue
               </p>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">Obtained</label>
-              <div className="flex flex-wrap gap-3 text-sm">
-                {['Owned','Borrowed','Library','Wishlist'].map(opt => (
-                  <label key={opt} className="inline-flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.obtained === opt}
-                      onChange={(e)=> handleInputChange('obtained', e.target.checked ? (opt as any) : null)}
-                    />
-                    {opt}
-                  </label>
-                ))}
-              </div>
+          </div>
+
+          {/* Formats (separate row below status/priority) */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Formats</label>
+            <div className="space-y-3">
+              {(formats.length ? formats : [{ format: formData.type || 'Book', obtained: formData.obtained || null }]).map((f, idx) => (
+                <div key={idx} className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Select
+                      className="w-2/5"
+                      value={f.format || 'Book'}
+                      onChange={(e) => {
+                        const next = [...formats]
+                        const prior = next[idx] ?? { format: f.format || (formData.type || 'Book'), obtained: f.obtained ?? (formData.obtained || null) }
+                        next[idx] = { ...prior, format: e.target.value }
+                        setFormats(next)
+                        if (idx === 0) handleInputChange('type', e.target.value)
+                      }}
+                    >
+                      {BOOK_TYPES.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </Select>
+                    <div className="flex flex-wrap gap-3 text-sm ml-2">
+                      {['Owned','Borrowed','Library','Wishlist','On Order'].map(opt => (
+                        <label key={opt} className="inline-flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={f.obtained === opt}
+                            onChange={(e)=> {
+                              const next = [...formats]
+                              const prior = next[idx] ?? { format: f.format || (formData.type || 'Book'), obtained: f.obtained ?? (formData.obtained || null) }
+                              next[idx] = { ...prior, obtained: e.target.checked ? (opt as any) : null }
+                              setFormats(next)
+                              if (idx === 0) handleInputChange('obtained', e.target.checked ? (opt as any) : null)
+                            }}
+                          />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  {idx > 0 && (
+                    <Button type="button" variant="secondary" onClick={()=>{
+                      const next = [...formats]
+                      next.splice(idx,1)
+                      setFormats(next)
+                    }}>✕</Button>
+                  )}
+                </div>
+              ))}
+              <Button type="button" variant="secondary" onClick={()=>{
+                setFormats(prev => [...prev, { format: 'Book', obtained: null }])
+              }}>+ Add Format</Button>
             </div>
+          </div>
+          
+          {/* Comments */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Comments</label>
+            <Textarea
+              value={formData.comments || ''}
+              placeholder="Notes about this book…"
+              rows={3}
+              onChange={(e) => handleInputChange('comments', e.target.value)}
+            />
           </div>
 
           {/* Tags */}
@@ -456,6 +616,7 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
               <div>
                 <label className="block text-xs text-zinc-600 dark:text-zinc-400 mb-1">Format (optional)</label>
                 <Select
+                  className="w-1/2"
                   value={readData.format || ''}
                   onChange={(e) => handleReadChange('format', e.target.value || undefined)}
                 >
@@ -652,6 +813,7 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
             >
               Cancel
             </Button>
+            
               {statusMsg && (
                 <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-2 whitespace-pre">{statusMsg}</span>
               )}

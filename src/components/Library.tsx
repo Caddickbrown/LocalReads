@@ -296,6 +296,7 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
         setTag('All')
         setYear(null)
         setDashboardFilter(null)
+        window.dispatchEvent(new CustomEvent('clear-global-search'))
       },
       description: 'Clear All Filters'
     },
@@ -461,7 +462,7 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
   return (
     <>
       <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-12 md:col-span-3">
+        <div className="col-span-12 md:col-span-2">
           <Card>
             <CardHeader>
               <div className="text-sm font-medium mb-2 flex items-center gap-2"><Filter className="w-4 h-4"/> Filters</div>
@@ -532,6 +533,8 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
                           setTag('All')
                           setYear(null)
                           setDashboardFilter(null)
+                          // Clear global search in parent App
+                          window.dispatchEvent(new CustomEvent('clear-global-search'))
                         }} 
                         variant="secondary" 
                         size="sm"
@@ -557,7 +560,7 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
           </Card>
         </div>
 
-        <div className="col-span-12 md:col-span-9">
+        <div className="col-span-12 md:col-span-10">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -623,6 +626,8 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
                               setStatus('All')
                               setTag('All')
                               setYear(null)
+                              // Clear global search in parent App
+                              window.dispatchEvent(new CustomEvent('clear-global-search'))
                             }}
                           >
                             Clear All Filters
@@ -650,10 +655,13 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
                             <p className="text-zinc-600 dark:text-zinc-400 truncate">
                               {book.author}
                             </p>
-                            {book.series_name && (
-                              <p className="text-sm text-zinc-500 dark:text-zinc-500 truncate">
-                                {book.series_name}
-                                {book.series_number && ` #${book.series_number}`}
+                            {(book.series_name || (book.series && book.series.length > 0)) && (
+                              <p className="text-sm text-zinc-500 dark:text-zinc-500 truncate" title={[book.series_name && (book.series_number ? `${book.series_name} #${book.series_number}` : book.series_name), ...(book.series||[]).map(s => s.number ? `${s.name} #${s.number}` : s.name)].filter(Boolean).join(' • ')}>
+                                {book.series_name || (book.series && book.series[0]?.name)}
+                                {(book.series_number != null ? book.series_number : (book.series && book.series[0]?.number)) && ` #${(book.series_number != null ? book.series_number : (book.series && book.series[0]?.number))}`}
+                                {book.series && book.series.length > 0 && (book.series_name ? book.series.length : Math.max(0, (book.series||[]).length - 1)) > 0 && (
+                                  <span className="ml-1 opacity-70">+{book.series_name ? book.series.length : (book.series.length - 1)}</span>
+                                )}
                               </p>
                             )}
                           </div>
@@ -844,13 +852,14 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
                           )}
                           {columnVisibility.series && (
                             <td className="py-3 px-2">
-                              {book.series_name && (
-                                <div className="text-sm">
-                                  {book.series_name}
-                                  {book.series_number && (
-                                    <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-1">
-                                      #{book.series_number}
-                                    </span>
+                              {(book.series_name || (book.series && book.series.length > 0)) && (
+                                <div className="text-sm" title={[book.series_name && (book.series_number ? `${book.series_name} #${book.series_number}` : book.series_name), ...(book.series||[]).map(s => s.number ? `${s.name} #${s.number}` : s.name)].filter(Boolean).join(' • ')}>
+                                  {book.series_name || (book.series && book.series[0]?.name)}
+                                  {(book.series_number != null ? book.series_number : (book.series && book.series[0]?.number)) && (
+                                    <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-1">#{(book.series_number != null ? book.series_number : (book.series && book.series[0]?.number))}</span>
+                                  )}
+                                  {book.series && book.series.length > 0 && (book.series_name ? book.series.length : Math.max(0, (book.series||[]).length - 1)) > 0 && (
+                                    <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-1">+{book.series_name ? book.series.length : (book.series.length - 1)}</span>
                                   )}
                                 </div>
                               )}
