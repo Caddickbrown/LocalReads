@@ -143,7 +143,7 @@ export default function Highlights({ onBack }:{ onBack:()=>void }){
                 console.error('Gems export failed:', error)
                 alert(`Gems export failed: ${error}`)
               }
-            }} className="flex items-center gap-2"><FileDown className="w-4 h-4"/> Export</Button>
+            }} className="flex items-center gap-2 w-24"><FileDown className="w-4 h-4"/> Export</Button>
           </div>
         </div>
       </CardHeader>
@@ -175,7 +175,7 @@ export default function Highlights({ onBack }:{ onBack:()=>void }){
             </div>
           </div>
           <div className="mt-3">
-            <Button onClick={addHighlight} className="flex items-center gap-2"><Plus className="w-4 h-4"/> Add Gem</Button>
+            <Button onClick={addHighlight} className="flex items-center gap-2 w-28"><Plus className="w-4 h-4"/> Add Gem</Button>
           </div>
         </div>
 

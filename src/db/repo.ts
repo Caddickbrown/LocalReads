@@ -1210,3 +1210,48 @@ export async function populateSampleDataIfEmpty(): Promise<void> {
     console.error('Failed to populate sample data:', error)
   }
 }
+
+// Function to find non-compliant data that doesn't match predefined options
+export async function findNonCompliantData(): Promise<{
+  nonCompliantObtained: Array<{ id: string; title: string; author: string; obtained: string }>;
+  nonCompliantTypes: Array<{ id: string; title: string; author: string; type: string }>;
+  nonCompliantStatuses: Array<{ id: string; title: string; author: string; status: string }>;
+}> {
+  try {
+    const db = await getDb()
+    
+    // Find books with non-compliant 'obtained' values
+    const nonCompliantObtained = await db.select(`
+      SELECT id, title, author, obtained 
+      FROM books 
+      WHERE obtained IS NOT NULL 
+      AND obtained NOT IN ('Owned', 'Borrowed', 'Library', 'Wishlist', 'On Order')
+      ORDER BY title COLLATE NOCASE ASC
+    `) as Array<{ id: string; title: string; author: string; obtained: string }>
+    
+    // Find books with non-compliant 'type' values
+    const nonCompliantTypes = await db.select(`
+      SELECT id, title, author, type 
+      FROM books 
+      WHERE type NOT IN ('Book', 'Audiobook', 'Ebook', 'Comic', 'Manga', 'Graphic Novel', 'Art/Photography Book')
+      ORDER BY title COLLATE NOCASE ASC
+    `) as Array<{ id: string; title: string; author: string; type: string }>
+    
+    // Find books with non-compliant 'status' values
+    const nonCompliantStatuses = await db.select(`
+      SELECT id, title, author, status 
+      FROM books 
+      WHERE status NOT IN ('To Read', 'Reading', 'Paused', 'Finished', 'Abandoned')
+      ORDER BY title COLLATE NOCASE ASC
+    `) as Array<{ id: string; title: string; author: string; status: string }>
+    
+    return {
+      nonCompliantObtained,
+      nonCompliantTypes,
+      nonCompliantStatuses
+    }
+  } catch (error) {
+    console.error('Failed to find non-compliant data:', error)
+    throw error
+  }
+}

@@ -20,6 +20,29 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Settings Button Width Fixes */
+.settings-button-fixed {
+  width: 80px !important;
+  min-width: 80px !important;
+  max-width: 80px !important;
+  flex-shrink: 0 !important;
+}
+
+.date-format-button-fixed {
+  width: 100px !important;
+  min-width: 100px !important;
+  max-width: 100px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Prevent horizontal scrollbars in settings containers */
+.settings-button-container {
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+}
+
 /* Typography Scale */
 .text-display-1 {
   @apply font-display text-6xl font-bold leading-tight;

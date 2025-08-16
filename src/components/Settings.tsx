@@ -126,43 +126,126 @@ export default function Settings({
         <div className="overflow-y-auto max-h-[75vh]">
           <Card className="border-0 rounded-none shadow-none">
       <CardContent>
-        <div className="space-y-6">
+        <div className="space-y-8">
+          {/* Theme Settings */}
           <div>
-            <div className="text-sm font-medium mb-1">🌗 Dark Mode</div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Choose your preferred appearance</div>
-            <div className="flex gap-1 p-0.5 bg-zinc-100 dark:bg-gray-800 rounded-lg w-fit">
-              <ModeButton
-                selected={mode === 'light'}
-                onClick={() => setMode('light')}
-                icon="☀️"
-                label="Light"
-              />
-              <ModeButton
-                selected={mode === 'dark'}
-                onClick={() => setMode('dark')}
-                icon="🌙"
-                label="Dark"
-              />
-              <ModeButton
-                selected={mode === 'system'}
-                onClick={() => setMode('system')}
-                icon="💻"
-                label="System"
-              />
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">🌗</span>
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Appearance</h3>
+            </div>
+            <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">Choose your preferred appearance and color scheme</div>
+            
+            {/* Dark Mode */}
+            <div className="mb-6">
+              <div className="text-sm font-medium mb-2 text-zinc-700 dark:text-zinc-300">Theme Mode</div>
+              <div className="flex gap-1 p-0.5 bg-zinc-100 dark:bg-gray-800 rounded-lg overflow-hidden w-fit">
+                <ModeButton
+                  selected={mode === 'light'}
+                  onClick={() => setMode('light')}
+                  icon="☀️"
+                  label="Light"
+                />
+                <ModeButton
+                  selected={mode === 'dark'}
+                  onClick={() => setMode('dark')}
+                  icon="🌙"
+                  label="Dark"
+                />
+                <ModeButton
+                  selected={mode === 'system'}
+                  onClick={() => setMode('system')}
+                  icon="💻"
+                  label="System"
+                />
+              </div>
+            </div>
+
+            {/* Color Themes */}
+            <div>
+              <div className="text-sm font-medium mb-2 text-zinc-700 dark:text-zinc-300">Color Themes</div>
+              <div className="flex flex-wrap gap-1 p-0.5 bg-zinc-100 dark:bg-gray-800 rounded-lg w-fit">
+                <ThemeButton
+                  selected={extraTheme === null}
+                  onClick={() => setExtraTheme(null)}
+                  emoji="⚪"
+                  label="Default"
+                  colors={['#6366f1', '#818cf8']}
+                />
+                <ThemeButton
+                  selected={extraTheme === 'sepia'}
+                  onClick={() => setExtraTheme('sepia')}
+                  emoji="📜"
+                  label="Sepia"
+                  colors={['#d2691e', '#daa520']}
+                />
+                <ThemeButton
+                  selected={extraTheme === 'forest'}
+                  onClick={() => setExtraTheme('forest')}
+                  emoji="🌲"
+                  label="Forest"
+                  colors={['#22c55e', '#16a34a']}
+                />
+                <ThemeButton
+                  selected={extraTheme === 'ocean'}
+                  onClick={() => setExtraTheme('ocean')}
+                  emoji="🌊"
+                  label="Ocean"
+                  colors={['#0ea5e9', '#0284c7']}
+                />
+                <ThemeButton
+                  selected={extraTheme === 'lavender'}
+                  onClick={() => setExtraTheme('lavender')}
+                  emoji="🌸"
+                  label="Lavender"
+                  colors={['#8b5cf6', '#7c3aed']}
+                />
+                <ThemeButton
+                  selected={extraTheme === 'sunset'}
+                  onClick={() => setExtraTheme('sunset')}
+                  emoji="🌅"
+                  label="Sunset"
+                  colors={['#f97316', '#fb7185']}
+                />
+                <ThemeButton
+                  selected={extraTheme === 'neon'}
+                  onClick={() => setExtraTheme('neon')}
+                  emoji="⚡"
+                  label="Neon"
+                  colors={['#22d3ee', '#a78bfa']}
+                />
+                <ThemeButton
+                  selected={extraTheme === 'candy'}
+                  onClick={() => setExtraTheme('candy')}
+                  emoji="🍬"
+                  label="Candy"
+                  colors={['#ec4899', '#f472b6']}
+                />
+                <ThemeButton
+                  selected={extraTheme === 'mint'}
+                  onClick={() => setExtraTheme('mint')}
+                  emoji="🌿"
+                  label="Mint"
+                  colors={['#2dd4bf', '#34d399']}
+                />
+              </div>
             </div>
           </div>
 
+          {/* Date Format Settings */}
           <div>
-            <div className="text-sm font-medium mb-1">📅 Date Format</div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Used when importing CSVs to interpret ambiguous dates</div>
-            <div className="flex gap-1 p-0.5 bg-zinc-100 dark:bg-gray-800 rounded-lg w-fit">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">📅</span>
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Date Format</h3>
+            </div>
+            <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">Used when importing CSVs to interpret ambiguous dates</div>
+            <div className="flex gap-1 p-0.5 bg-zinc-100 dark:bg-gray-800 rounded-lg overflow-hidden w-fit">
               {([
                 { key: 'auto', label: 'Auto' },
                 { key: 'YMD', label: 'YYYY-MM-DD' },
                 { key: 'MDY', label: 'MM/DD/YYYY' },
                 { key: 'DMY', label: 'DD/MM/YYYY' }
               ] as Array<{ key: StoredDatePreference, label: string }>).map((opt)=> (
-                <ModeButton
+                <DateFormatButton
                   key={opt.key}
                   selected={datePref === opt.key}
                   onClick={()=>{ setDatePref(opt.key); setStoredDatePreference(opt.key) }}
@@ -173,84 +256,19 @@ export default function Settings({
             </div>
           </div>
 
+          {/* Updates Section */}
           <div>
-            <div className="text-sm font-medium mb-1">🎨 Color Themes</div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Choose a color theme to enhance your reading experience</div>
-            <div className="flex flex-wrap gap-1 p-0.5 bg-zinc-100 dark:bg-gray-800 rounded-lg w-fit">
-              <ThemeButton
-                selected={extraTheme === null}
-                onClick={() => setExtraTheme(null)}
-                emoji="⚪"
-                label="Default"
-                colors={['#6366f1', '#818cf8']}
-              />
-              <ThemeButton
-                selected={extraTheme === 'sepia'}
-                onClick={() => setExtraTheme('sepia')}
-                emoji="📜"
-                label="Sepia"
-                colors={['#d2691e', '#daa520']}
-              />
-              <ThemeButton
-                selected={extraTheme === 'forest'}
-                onClick={() => setExtraTheme('forest')}
-                emoji="🌲"
-                label="Forest"
-                colors={['#22c55e', '#16a34a']}
-              />
-              <ThemeButton
-                selected={extraTheme === 'ocean'}
-                onClick={() => setExtraTheme('ocean')}
-                emoji="🌊"
-                label="Ocean"
-                colors={['#0ea5e9', '#0284c7']}
-              />
-              <ThemeButton
-                selected={extraTheme === 'lavender'}
-                onClick={() => setExtraTheme('lavender')}
-                emoji="🌸"
-                label="Lavender"
-                colors={['#8b5cf6', '#7c3aed']}
-              />
-              <ThemeButton
-                selected={extraTheme === 'sunset'}
-                onClick={() => setExtraTheme('sunset')}
-                emoji="🌅"
-                label="Sunset"
-                colors={['#f97316', '#fb7185']}
-              />
-              <ThemeButton
-                selected={extraTheme === 'neon'}
-                onClick={() => setExtraTheme('neon')}
-                emoji="⚡"
-                label="Neon"
-                colors={['#22d3ee', '#a78bfa']}
-              />
-              <ThemeButton
-                selected={extraTheme === 'candy'}
-                onClick={() => setExtraTheme('candy')}
-                emoji="🍬"
-                label="Candy"
-                colors={['#ec4899', '#f472b6']}
-              />
-              <ThemeButton
-                selected={extraTheme === 'mint'}
-                onClick={() => setExtraTheme('mint')}
-                emoji="🌿"
-                label="Mint"
-                colors={['#2dd4bf', '#34d399']}
-              />
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">🔄</span>
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Updates</h3>
             </div>
-          </div>
-
-          <div>
-            <div className="text-sm font-medium mb-2">Updates</div>
+            <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">Check for and install application updates</div>
             <div className="space-y-3">
               <Button 
                 onClick={handleCheckUpdate} 
                 disabled={isChecking}
                 variant="secondary"
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 w-40"
               >
                 {isChecking ? (
                   <RefreshCw className="w-4 h-4 animate-spin" />
@@ -269,7 +287,7 @@ export default function Settings({
                     <Button 
                       onClick={handleInstallUpdate}
                       size="sm"
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 w-24"
                     >
                       <Download className="w-4 h-4" />
                       Install
@@ -285,133 +303,148 @@ export default function Settings({
             </div>
           </div>
 
+          {/* Database Section */}
           <div>
-            <div className="text-sm font-medium mb-2">Database</div>
-            <div className="flex items-center gap-2 text-xs">
-              <Button
-                onClick={async ()=>{
-                  const p = await databasePath()
-                  setDbPath(p)
-                  alert(`Database file: ${p}`)
-                }}
-                className="flex items-center gap-2"
-              >
-                <Download className="w-4 h-4"/> Show DB Path
-              </Button>
-              <Button
-                onClick={async ()=>{
-                  const p = await databasePath()
-                  if (!p) {
-                    alert('Error: Could not determine database path. This might indicate a configuration issue.')
-                    return
-                  }
-                  
-                  // Extract directory path from the database file path
-                  const dirPath = p.substring(0, p.lastIndexOf('/'))
-                  console.log('Database file path:', p)
-                  console.log('Attempting to open directory:', dirPath)
-                  
-                  try {
-                    // Try to open the directory containing the database file using the opener plugin
-                    // @ts-ignore - type definitions may not be available yet
-                    const opener = await import('@tauri-apps/plugin-opener')
-                    console.log('Opener plugin loaded:', opener)
-                    const anyOpener: any = opener as any
-                    console.log('Available methods:', Object.keys(anyOpener))
-                    
-                    // Try different possible function names to open the directory
-                    if (typeof anyOpener.open === 'function') {
-                      console.log('Using opener.open to open directory')
-                      await anyOpener.open(dirPath)
-                    } else if (typeof anyOpener.openPath === 'function') {
-                      console.log('Using opener.openPath to open directory')
-                      await anyOpener.openPath(dirPath)
-                    } else {
-                      throw new Error('No suitable open function found in opener plugin')
-                    }
-                    console.log('Directory opened successfully')
-                  } catch (openError: any) {
-                    console.error('Failed to open file location:', openError)
-                    
-                    // Determine the specific error reason
-                    let errorReason = 'Unknown error'
-                    let suggestion = 'Try opening the path manually in your file manager.'
-                    
-                    if (openError?.message) {
-                      const errorMsg = openError.message.toLowerCase()
-                      
-                      if (errorMsg.includes('permission') || errorMsg.includes('access')) {
-                        errorReason = 'Permission denied - insufficient file system permissions'
-                        suggestion = 'Check if the app has permission to access files, or try running as administrator.'
-                      } else if (errorMsg.includes('not found') || errorMsg.includes('no such file')) {
-                        errorReason = 'Database file or directory does not exist'
-                        suggestion = 'The database may not have been created yet. Try adding a book first.'
-                      } else if (errorMsg.includes('opener') || errorMsg.includes('plugin')) {
-                        errorReason = 'File opener plugin not available or not working'
-                        suggestion = 'This feature requires the desktop app. Make sure you are not using the web version.'
-                      } else if (errorMsg.includes('platform') || errorMsg.includes('unsupported')) {
-                        errorReason = 'Opening files not supported on this platform'
-                        suggestion = 'Your operating system may not support automatic file opening.'
-                      } else {
-                        errorReason = `System error: ${openError.message}`
-                      }
-                    } else if (typeof openError === 'string') {
-                      errorReason = openError
-                    }
-                    
-                    // Fallback: copy directory path to clipboard
-                    try {
-                      await copyToClipboard(dirPath)
-                      alert(`❌ Cannot Open File Location\n\nReason: ${errorReason}\n\nSuggestion: ${suggestion}\n\n✅ Database directory path copied to clipboard:\n${dirPath}\n\nYou can paste this path into your file manager to navigate there manually. The database file "${p.split('/').pop()}" will be in that directory.`)
-                    } catch (clipboardError: any) {
-                      console.error('Failed to copy to clipboard:', clipboardError)
-                      
-                      let clipboardErrorReason = 'Unknown clipboard error'
-                      if (clipboardError?.message) {
-                        if (clipboardError.message.includes('permission')) {
-                          clipboardErrorReason = 'No permission to access clipboard'
-                        } else if (clipboardError.message.includes('plugin')) {
-                          clipboardErrorReason = 'Clipboard plugin not available'
-                        } else {
-                          clipboardErrorReason = clipboardError.message
-                        }
-                      }
-                      
-                      alert(`❌ Cannot Open File Location\n\nReason: ${errorReason}\n\nSuggestion: ${suggestion}\n\n❌ Also failed to copy to clipboard\nClipboard Error: ${clipboardErrorReason}\n\n📁 Database directory path (copy manually):\n${dirPath}\n\n📄 Database file: ${p.split('/').pop()}`)
-                    }
-                  }
-                }}
-                className="flex items-center gap-2"
-              >
-                <Download className="w-4 h-4"/> Open DB File Location
-              </Button>
-              <span className="opacity-70 truncate">{dbPath}</span>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">🗄️</span>
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Database</h3>
             </div>
-            <div className="mt-2 flex items-center gap-2 text-xs">
-              <Button
-                onClick={async ()=>{
-                  const p = await open({ multiple: false, directory: false, canCreateDirectories: true, defaultPath: 'localreads.sqlite' })
-                  if (p && typeof p === 'string') {
-                    await setDatabasePath(p)
+            <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">Manage your database location and settings</div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-xs">
+                <Button
+                  onClick={async ()=>{
+                    const p = await databasePath()
                     setDbPath(p)
-                    alert(`Database path updated. Will use: ${p}`)
-                  }
-                }}
-                className="flex items-center gap-2"
-              >
-                <Download className="w-4 h-4"/> Change DB Location
-              </Button>
-              <span className="opacity-70">Pick a .sqlite file (existing or new)</span>
+                    alert(`Database file: ${p}`)
+                  }}
+                  className="flex items-center gap-2 w-32"
+                >
+                  <Download className="w-4 h-4"/> Show DB Path
+                </Button>
+                <span className="opacity-70 truncate">{dbPath}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <Button
+                  onClick={async ()=>{
+                    const p = await databasePath()
+                    if (!p) {
+                      alert('Error: Could not determine database path. This might indicate a configuration issue.')
+                      return
+                    }
+                    
+                    // Extract directory path from the database file path
+                    const dirPath = p.substring(0, p.lastIndexOf('/'))
+                    console.log('Database file path:', p)
+                    console.log('Attempting to open directory:', dirPath)
+                    
+                    try {
+                      // Try to open the directory containing the database file using the opener plugin
+                      // @ts-ignore - type definitions may not be available yet
+                      const opener = await import('@tauri-apps/plugin-opener')
+                      console.log('Opener plugin loaded:', opener)
+                      const anyOpener: any = opener as any
+                      console.log('Available methods:', Object.keys(anyOpener))
+                      
+                      // Try different possible function names to open the directory
+                      if (typeof anyOpener.open === 'function') {
+                        console.log('Using opener.open to open directory')
+                        await anyOpener.open(dirPath)
+                      } else if (typeof anyOpener.openPath === 'function') {
+                        console.log('Using opener.openPath to open directory')
+                        await anyOpener.openPath(dirPath)
+                      } else {
+                        throw new Error('No suitable open function found in opener plugin')
+                      }
+                      console.log('Directory opened successfully')
+                    } catch (openError: any) {
+                      console.error('Failed to open file location:', openError)
+                      
+                      // Determine the specific error reason
+                      let errorReason = 'Unknown error'
+                      let suggestion = 'Try opening the path manually in your file manager.'
+                      
+                      if (openError?.message) {
+                        const errorMsg = openError.message.toLowerCase()
+                        
+                        if (errorMsg.includes('permission') || errorMsg.includes('access')) {
+                          errorReason = 'Permission denied - insufficient file system permissions'
+                          suggestion = 'Check if the app has permission to access files, or try running as administrator.'
+                        } else if (errorMsg.includes('not found') || errorMsg.includes('no such file')) {
+                          errorReason = 'Database file or directory does not exist'
+                          suggestion = 'The database may not have been created yet. Try adding a book first.'
+                        } else if (errorMsg.includes('opener') || errorMsg.includes('plugin')) {
+                          errorReason = 'File opener plugin not available or not working'
+                          suggestion = 'This feature requires the desktop app. Make sure you are not using the web version.'
+                        } else if (errorMsg.includes('platform') || errorMsg.includes('unsupported')) {
+                          errorReason = 'Opening files not supported on this platform'
+                          suggestion = 'Your operating system may not support automatic file opening.'
+                        } else {
+                          errorReason = `System error: ${openError.message}`
+                        }
+                      } else if (typeof openError === 'string') {
+                        errorReason = openError
+                      }
+                      
+                      // Fallback: copy directory path to clipboard
+                      try {
+                        await copyToClipboard(dirPath)
+                        alert(`❌ Cannot Open File Location\n\nReason: ${errorReason}\n\nSuggestion: ${suggestion}\n\n✅ Database directory path copied to clipboard:\n${dirPath}\n\nYou can paste this path into your file manager to navigate there manually. The database file "${p.split('/').pop()}" will be in that directory.`)
+                      } catch (clipboardError: any) {
+                        console.error('Failed to copy to clipboard:', clipboardError)
+                        
+                        let clipboardErrorReason = 'Unknown clipboard error'
+                        if (clipboardError?.message) {
+                          if (clipboardError.message.includes('permission')) {
+                            clipboardErrorReason = 'No permission to access clipboard'
+                          } else if (clipboardError.message.includes('plugin')) {
+                            clipboardErrorReason = 'Clipboard plugin not available'
+                          } else {
+                            clipboardErrorReason = clipboardError.message
+                          }
+                        }
+                        
+                        alert(`❌ Cannot Open File Location\n\nReason: ${errorReason}\n\nSuggestion: ${suggestion}\n\n❌ Also failed to copy to clipboard\nClipboard Error: ${clipboardErrorReason}\n\n📁 Database directory path (copy manually):\n${dirPath}\n\n📄 Database file: ${p.split('/').pop()}`)
+                      }
+                    }
+                  }}
+                  className="flex items-center gap-2 w-40"
+                >
+                  <Download className="w-4 h-4"/> Open DB File Location
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <Button
+                  onClick={async ()=>{
+                    const p = await open({ multiple: false, directory: false, canCreateDirectories: true, defaultPath: 'localreads.sqlite' })
+                    if (p && typeof p === 'string') {
+                      await setDatabasePath(p)
+                      setDbPath(p)
+                      alert(`Database path updated. Will use: ${p}`)
+                    }
+                  }}
+                  className="flex items-center gap-2 w-40"
+                >
+                  <Download className="w-4 h-4"/> Change DB Location
+                </Button>
+                <span className="opacity-70">Pick a .sqlite file (existing or new)</span>
+              </div>
             </div>
           </div>
 
+          {/* Import/Export Section */}
           <div>
-            <div className="text-sm font-medium mb-4">📥📤 Import / Export</div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">📥📤</span>
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Import & Export</h3>
+            </div>
+            <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">Manage your data with CSV and JSON formats</div>
             
             {/* Books Section */}
-            <div className="mb-4">
-              <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-2 flex items-center gap-2">
-                📚 Books & Library
+            <div className="mb-6">
+              <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3 flex items-center gap-2">
+                <span className="text-base">📚</span>
+                Books & Library
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -443,7 +476,7 @@ export default function Settings({
                       setExporting(false)
                     }
                   }}
-                  className="flex items-center gap-1 justify-center text-xs"
+                  className="flex items-center gap-1 justify-center text-xs w-28"
                   size="sm"
                   disabled={exporting}
                 >
@@ -463,7 +496,7 @@ export default function Settings({
                       setImporting(false)
                     }
                   }}
-                  className="flex items-center gap-1 justify-center text-xs"
+                  className="flex items-center gap-1 justify-center text-xs w-28"
                   size="sm"
                   disabled={importing}
                 >
@@ -486,7 +519,7 @@ export default function Settings({
                       alert(`Template export failed: ${error}`)
                     }
                   }}
-                  className="flex items-center gap-1 justify-center text-xs"
+                  className="flex items-center gap-1 justify-center text-xs w-28"
                   size="sm"
                   variant="secondary"
                 >
@@ -496,9 +529,10 @@ export default function Settings({
             </div>
 
             {/* Gems Section */}
-            <div className="mb-4">
-              <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-2 flex items-center gap-2">
-                ✨ Gems
+            <div className="mb-6">
+              <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3 flex items-center gap-2">
+                <span className="text-base">✨</span>
+                Gems
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -528,7 +562,7 @@ export default function Settings({
                       setExporting(false)
                     }
                   }}
-                  className="flex items-center gap-1 justify-center text-xs"
+                  className="flex items-center gap-1 justify-center text-xs w-28"
                   size="sm"
                   disabled={exporting}
                 >
@@ -547,7 +581,7 @@ export default function Settings({
                       setImporting(false)
                     }
                   }}
-                  className="flex items-center gap-1 justify-center text-xs"
+                  className="flex items-center gap-1 justify-center text-xs w-28"
                   size="sm"
                   disabled={importing}
                 >
@@ -570,7 +604,7 @@ export default function Settings({
                       alert(`Template export failed: ${error}`)
                     }
                   }}
-                  className="flex items-center gap-1 justify-center text-xs"
+                  className="flex items-center gap-1 justify-center text-xs w-28"
                   size="sm"
                   variant="secondary"
                 >
@@ -580,9 +614,10 @@ export default function Settings({
             </div>
 
             {/* Reads Section */}
-            <div className="mb-4">
-              <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-2 flex items-center gap-2">
-                📖 Reads
+            <div className="mb-6">
+              <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3 flex items-center gap-2">
+                <span className="text-base">📖</span>
+                Reads
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -605,7 +640,7 @@ export default function Settings({
                       setExporting(false)
                     }
                   }}
-                  className="flex items-center gap-1 justify-center text-xs"
+                  className="flex items-center gap-1 justify-center text-xs w-28"
                   size="sm"
                   disabled={exporting}
                 >
@@ -624,7 +659,7 @@ export default function Settings({
                       setImporting(false)
                     }
                   }}
-                  className="flex items-center gap-1 justify-center text-xs"
+                  className="flex items-center gap-1 justify-center text-xs w-28"
                   size="sm"
                   disabled={importing}
                 >
@@ -647,7 +682,7 @@ export default function Settings({
                       alert(`Template export failed: ${error}`)
                     }
                   }}
-                  className="flex items-center gap-1 justify-center text-xs"
+                  className="flex items-center gap-1 justify-center text-xs w-28"
                   size="sm"
                   variant="secondary"
                 >
@@ -656,29 +691,11 @@ export default function Settings({
               </div>
             </div>
 
-            {/* Data Cleanup */}
-            <div>
-              <div className="text-sm font-medium mb-2">🧹 Data Cleanup</div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  onClick={() => {
-                    onBack()
-                    setTimeout(() => {
-                      window.dispatchEvent(new CustomEvent('show-duplicates'))
-                    }, 50)
-                  }}
-                  className="flex items-center gap-1 justify-center text-xs"
-                  size="sm"
-                >
-                  <ListChecks className="w-3 h-3"/> Find Duplicates
-                </Button>
-              </div>
-            </div>
-
             {/* Full Data Backup Section */}
-            <div className="mb-2">
-              <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-2 flex items-center gap-2">
-                💾 Full Data Backup (JSON)
+            <div className="mb-4">
+              <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3 flex items-center gap-2">
+                <span className="text-base">💾</span>
+                Full Data Backup (JSON)
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -708,7 +725,7 @@ export default function Settings({
                       setExporting(false)
                     }
                   }}
-                  className="flex items-center gap-1 justify-center text-xs"
+                  className="flex items-center gap-1 justify-center text-xs w-28"
                   size="sm"
                   disabled={exporting}
                 >
@@ -727,13 +744,48 @@ export default function Settings({
                       setImporting(false)
                     }
                   }}
-                  className="flex items-center gap-1 justify-center text-xs"
+                  className="flex items-center gap-1 justify-center text-xs w-28"
                   size="sm"
                   disabled={importing}
                 >
                   <Upload className="w-3 h-3"/> {importing ? 'Importing…' : 'Restore Backup'}
                 </Button>
               </div>
+            </div>
+          </div>
+
+          {/* Data Cleanup Section */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">🧹</span>
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Data Cleanup</h3>
+            </div>
+            <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">Find and resolve data inconsistencies</div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() => {
+                  onBack()
+                  setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('show-duplicates'))
+                  }, 50)
+                }}
+                className="flex items-center gap-1 justify-center text-xs w-28"
+                size="sm"
+              >
+                <ListChecks className="w-3 h-3"/> Find Duplicates
+              </Button>
+              <Button
+                onClick={() => {
+                  onBack()
+                  setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('show-non-compliant'))
+                  }, 50)
+                }}
+                className="flex items-center gap-1 justify-center text-xs w-32"
+                size="sm"
+              >
+                <ListChecks className="w-3 h-3"/> Find Non-Compliant
+              </Button>
             </div>
           </div>
         </div>
@@ -753,11 +805,34 @@ function ModeButton({ selected, onClick, icon, label }: {
 }) {
   return (
     <button
-      className={`flex flex-col items-center gap-1 p-2 rounded-md transition-all duration-300 ${
+      className={`flex flex-col items-center gap-1 p-2 rounded-md transition-all duration-300 min-w-20 max-w-20 flex-shrink-0 settings-button-fixed ${
         selected
           ? 'bg-white dark:bg-zinc-600 shadow-md text-indigo-600 dark:text-white font-medium border border-indigo-200 dark:border-zinc-500'
           : 'hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:text-zinc-800 dark:hover:text-white'
       }`}
+      style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}
+      onClick={onClick}
+    >
+      <span className="text-sm">{icon}</span>
+      <span className="text-xs font-medium">{label}</span>
+    </button>
+  )
+}
+
+function DateFormatButton({ selected, onClick, icon, label }: {
+  selected: boolean;
+  onClick: () => void;
+  icon: string;
+  label: string;
+}) {
+  return (
+    <button
+      className={`flex flex-col items-center gap-1 p-2 rounded-md transition-all duration-300 min-w-24 max-w-24 flex-shrink-0 date-format-button-fixed ${
+        selected
+          ? 'bg-white dark:bg-zinc-600 shadow-md text-indigo-600 dark:text-white font-medium border border-indigo-200 dark:border-zinc-500'
+          : 'hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:text-zinc-800 dark:hover:text-white'
+      }`}
+      style={{ width: '100px', minWidth: '100px', maxWidth: '100px' }}
       onClick={onClick}
     >
       <span className="text-sm">{icon}</span>
@@ -775,11 +850,12 @@ function ThemeButton({ selected, onClick, emoji, label, colors }: {
 }) {
   return (
     <button
-      className={`flex flex-col items-center gap-1 p-2 rounded-md transition-all duration-300 ${
+      className={`flex flex-col items-center gap-1 p-2 rounded-md transition-all duration-300 min-w-20 max-w-20 flex-shrink-0 settings-button-fixed ${
         selected
           ? 'bg-white dark:bg-zinc-600 shadow-md text-indigo-600 dark:text-white font-medium border border-indigo-200 dark:border-zinc-500'
           : 'hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:text-zinc-800 dark:hover:text-white'
       }`}
+      style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}
       onClick={onClick}
     >
       <span className="text-sm">{emoji}</span>

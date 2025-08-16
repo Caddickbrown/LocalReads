@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { Edit3, Filter, ListChecks, Plus, Search, Trash2, BookOpenText, Tags, Star, Calendar, User, Columns, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import type { Book, Read } from '@/types'
 import { BOOK_TYPES, STATUSES } from '@/types'
-import { listBooks, upsertBook, deleteBook, readsForBook, upsertRead, deleteRead, setTagsForBook, countBooks, countNextUpBooks, countReReads, countFinishedThisYear } from '@/db/repo'
+import { listBooks, upsertBook, deleteBook, readsForBook, upsertRead, deleteRead, setTagsForBook, countBooks, countNextUpBooks, countReReads, countFinishedThisYear, findNonCompliantData as findNonCompliantDataFromRepo } from '@/db/repo'
 import { Card, CardHeader, CardContent, Button, Badge, Input, Select, EmptyState, Spinner, ProgressBar, Checkbox, useToast } from './ui'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import EditDialog from './EditDialog'
@@ -147,6 +147,16 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
   const [showDuplicates, setShowDuplicates] = useState(false)
   const [duplicateGroups, setDuplicateGroups] = useState<BookRow[][]>([])
   const [isLoadingDuplicates, setIsLoadingDuplicates] = useState(false)
+
+  // Non-compliant data finding state
+  const [showNonCompliant, setShowNonCompliant] = useState(false)
+  const [nonCompliantData, setNonCompliantData] = useState<{
+    nonCompliantObtained: Array<{ id: string; title: string; author: string; obtained: string }>;
+    nonCompliantTypes: Array<{ id: string; title: string; author: string; type: string }>;
+    nonCompliantStatuses: Array<{ id: string; title: string; author: string; status: string }>;
+  } | null>(null)
+  const [isLoadingNonCompliant, setIsLoadingNonCompliant] = useState(false)
+  const [editingFromNonCompliant, setEditingFromNonCompliant] = useState(false)
 
   // Toast notifications
   const { addToast } = useToast()
@@ -396,6 +406,11 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
       findDuplicates()
     }
 
+    const handleShowNonCompliant = () => {
+      setShowNonCompliant(true)
+      findNonCompliantData()
+    }
+
     window.addEventListener('new-book', handleNewBook)
     window.addEventListener('edit-book', handleEditBook as EventListener)
     window.addEventListener('refresh-library', handleRefresh)
@@ -403,6 +418,7 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
     window.addEventListener('dashboard-filter', handleDashboardFilter as EventListener)
     window.addEventListener('add-book', handleAddBook)
     window.addEventListener('show-duplicates', handleShowDuplicates)
+    window.addEventListener('show-non-compliant', handleShowNonCompliant)
 
     return () => {
       window.removeEventListener('new-book', handleNewBook)
@@ -412,6 +428,7 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
       window.removeEventListener('dashboard-filter', handleDashboardFilter as EventListener)
       window.removeEventListener('add-book', handleAddBook)
       window.removeEventListener('show-duplicates', handleShowDuplicates)
+      window.removeEventListener('show-non-compliant', handleShowNonCompliant)
     }
   }, [])
 
@@ -457,6 +474,57 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
     }
   }, [addToast])
 
+  // Non-compliant data finding logic
+  const findNonCompliantData = useCallback(async () => {
+    setIsLoadingNonCompliant(true)
+    try {
+      const data = await findNonCompliantDataFromRepo()
+      setNonCompliantData(data)
+    } catch (error) {
+      console.error('Error finding non-compliant data:', error)
+      addToast({
+        title: 'Error finding non-compliant data',
+        message: 'Error finding non-compliant data. Please try again.',
+        type: 'error',
+      })
+    } finally {
+      setIsLoadingNonCompliant(false)
+    }
+  }, [addToast])
+
+  // Helper function to edit a book from non-compliant data
+  const handleEditNonCompliantBook = useCallback(async (bookId: string) => {
+    setShowNonCompliant(false)
+    setNonCompliantData(null)
+    setIsLoadingNonCompliant(false)
+    setEditingFromNonCompliant(true)
+    
+    // Get the full book data from the database
+    try {
+      const allBooks = await listBooks({})
+      const bookRow = allBooks.find(b => b.id === bookId)
+      if (bookRow) {
+        setEditingBook(bookRow)
+        setShowEditDialog(true)
+      } else {
+        setEditingFromNonCompliant(false)
+        addToast({
+          title: 'Book not found',
+          message: 'Could not find the book in the database. It may have been deleted.',
+          type: 'error',
+        })
+      }
+    } catch (error) {
+      setEditingFromNonCompliant(false)
+      console.error('Error fetching book data:', error)
+      addToast({
+        title: 'Error',
+        message: 'Failed to fetch book data. Please try again.',
+        type: 'error',
+      })
+    }
+  }, [addToast])
+
   // Handle escape key to close duplicates modal
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -472,6 +540,22 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
       return () => document.removeEventListener('keydown', handleEscape)
     }
   }, [showDuplicates])
+
+  // Handle escape key to close non-compliant modal
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showNonCompliant) {
+        setShowNonCompliant(false)
+        setNonCompliantData(null)
+        setIsLoadingNonCompliant(false)
+      }
+    }
+
+    if (showNonCompliant) {
+      document.addEventListener('keydown', handleEscape)
+      return () => document.removeEventListener('keydown', handleEscape)
+    }
+  }, [showNonCompliant])
 
   const handleMergeDuplicates = useCallback(async (books: BookRow[], keepIndex: number) => {
     if (!confirm(`Are you sure you want to merge these ${books.length} books? The first book will be kept and all reading history from the others will be transferred to it.`)) {
@@ -793,8 +877,19 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
   const handleSaveBook = () => {
     setShowEditDialog(false)
     setEditingBook(null)
-    // Trigger refresh
-    window.dispatchEvent(new CustomEvent('refresh-library'))
+    
+    // If we were editing from the non-compliant modal, return to it
+    if (editingFromNonCompliant) {
+      setEditingFromNonCompliant(false)
+      // Small delay to ensure the edit dialog is closed before reopening the non-compliant modal
+      setTimeout(() => {
+        setShowNonCompliant(true)
+        findNonCompliantData()
+      }, 100)
+    } else {
+      // Trigger refresh for normal library editing
+      window.dispatchEvent(new CustomEvent('refresh-library'))
+    }
   }
 
   const toggleSort = (field: typeof sortBy) => {
@@ -1581,6 +1676,15 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
           onClose={() => {
             setShowEditDialog(false)
             setEditingBook(null)
+            // If we were editing from the non-compliant modal, return to it
+            if (editingFromNonCompliant) {
+              setEditingFromNonCompliant(false)
+              // Small delay to ensure the edit dialog is closed before reopening the non-compliant modal
+              setTimeout(() => {
+                setShowNonCompliant(true)
+                findNonCompliantData()
+              }, 100)
+            }
           }}
           onSave={handleSaveBook}
         />
@@ -1761,6 +1865,225 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Non-Compliant Data Modal */}
+      {showNonCompliant && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowNonCompliant(false)
+              setNonCompliantData(null)
+              setIsLoadingNonCompliant(false)
+            }
+          }}
+        >
+          <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-zinc-200 dark:border-zinc-700">
+              <div className="flex items-center gap-3">
+                <ListChecks className="w-6 h-6 text-orange-600" />
+                <div>
+                  <h2 className="text-heading-2 text-zinc-900 dark:text-zinc-100">
+                    Data Compliance Issues Found
+                  </h2>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+                    Review and fix data that doesn't match predefined options. Click on any book to edit it.
+                  </p>
+                </div>
+                {nonCompliantData && (
+                  <Badge variant="warning" size="md">
+                    {nonCompliantData.nonCompliantObtained.length + 
+                     nonCompliantData.nonCompliantTypes.length + 
+                     nonCompliantData.nonCompliantStatuses.length} issues
+                  </Badge>
+                )}
+              </div>
+              <Button
+                onClick={() => {
+                  setShowNonCompliant(false)
+                  setNonCompliantData(null)
+                  setIsLoadingNonCompliant(false)
+                }}
+                variant="secondary"
+                size="sm"
+              >
+                Close
+              </Button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              {isLoadingNonCompliant ? (
+                <div className="flex items-center justify-center py-12">
+                  <Spinner size="lg" />
+                  <span className="ml-3 text-zinc-600 dark:text-zinc-400">Finding non-compliant data...</span>
+                </div>
+              ) : !nonCompliantData ? (
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">❓</div>
+                  <h3 className="text-heading-3 text-zinc-900 dark:text-zinc-100 mb-2">
+                    No Data Loaded
+                  </h3>
+                  <p className="text-zinc-600 dark:text-zinc-400">
+                    Something went wrong loading the data.
+                  </p>
+                </div>
+              ) : (nonCompliantData.nonCompliantObtained.length === 0 && 
+                   nonCompliantData.nonCompliantTypes.length === 0 && 
+                   nonCompliantData.nonCompliantStatuses.length === 0) ? (
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">🎉</div>
+                  <h3 className="text-heading-3 text-zinc-900 dark:text-zinc-100 mb-2">
+                    No Compliance Issues Found!
+                  </h3>
+                  <p className="text-zinc-600 dark:text-zinc-400">
+                    All your books have valid values for obtained status, book type, and reading status.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  {/* Obtained Status Issues */}
+                  {nonCompliantData.nonCompliantObtained.length > 0 && (
+                    <div className="border border-orange-200 dark:border-orange-700 rounded-lg p-4">
+                      <div className="flex items-center gap-3 mb-4">
+                        <h4 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                          📚 Obtained Status Issues
+                        </h4>
+                        <Badge variant="warning" size="sm">
+                          {nonCompliantData.nonCompliantObtained.length} books
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
+                        Valid options: <strong>Owned, Borrowed, Library, Wishlist, On Order</strong>
+                      </div>
+                      <div className="space-y-3">
+                        {nonCompliantData.nonCompliantObtained.map((book) => (
+                          <div
+                            key={book.id}
+                            className="flex items-center justify-between p-3 rounded-lg border border-orange-200 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20"
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                                {book.title}
+                              </div>
+                              <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                                by {book.author}
+                              </div>
+                              <div className="mt-1">
+                                <Badge variant="warning" size="sm">
+                                  Current: "{book.obtained}"
+                                </Badge>
+                              </div>
+                            </div>
+                            <Button
+                              onClick={() => handleEditNonCompliantBook(book.id)}
+                              variant="primary"
+                              size="sm"
+                            >
+                              Edit Book
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Book Type Issues */}
+                  {nonCompliantData.nonCompliantTypes.length > 0 && (
+                    <div className="border border-orange-200 dark:border-orange-700 rounded-lg p-4">
+                      <div className="flex items-center gap-3 mb-4">
+                        <h4 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                          📖 Book Type Issues
+                        </h4>
+                        <Badge variant="warning" size="sm">
+                          {nonCompliantData.nonCompliantTypes.length} books
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
+                        Valid options: <strong>Book, Audiobook, Ebook, Comic, Manga, Graphic Novel, Art/Photography Book</strong>
+                      </div>
+                      <div className="space-y-3">
+                        {nonCompliantData.nonCompliantTypes.map((book) => (
+                          <div
+                            key={book.id}
+                            className="flex items-center justify-between p-3 rounded-lg border border-orange-200 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20"
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                                {book.title}
+                              </div>
+                              <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                                by {book.author}
+                              </div>
+                              <div className="mt-1">
+                                <Badge variant="warning" size="sm">
+                                  Current: "{book.type}"
+                                </Badge>
+                              </div>
+                            </div>
+                            <Button
+                              onClick={() => handleEditNonCompliantBook(book.id)}
+                              variant="primary"
+                              size="sm"
+                            >
+                              Edit Book
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reading Status Issues */}
+                  {nonCompliantData.nonCompliantStatuses.length > 0 && (
+                    <div className="border border-orange-200 dark:border-orange-700 rounded-lg p-4">
+                      <div className="flex items-center gap-3 mb-4">
+                        <h4 className="text-heading-4 text-zinc-900 dark:text-zinc-100">
+                          📖 Reading Status Issues
+                        </h4>
+                        <Badge variant="warning" size="sm">
+                          {nonCompliantData.nonCompliantStatuses.length} books
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
+                        Valid options: <strong>To Read, Reading, Paused, Finished, Abandoned</strong>
+                      </div>
+                      <div className="space-y-3">
+                        {nonCompliantData.nonCompliantStatuses.map((book) => (
+                          <div
+                            key={book.id}
+                            className="flex items-center justify-between p-3 rounded-lg border border-orange-200 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20"
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                                {book.title}
+                              </div>
+                              <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                                by {book.author}
+                              </div>
+                              <div className="mt-1">
+                                <Badge variant="warning" size="sm">
+                                  Current: "{book.status}"
+                                </Badge>
+                              </div>
+                            </div>
+                            <Button
+                              onClick={() => handleEditNonCompliantBook(book.id)}
+                              variant="primary"
+                              size="sm"
+                            >
+                              Edit Book
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -8,15 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- New vibrant themes in Settings → Color Themes:
-  - Sunset (warm orange/rose gradient)
-  - Neon (electric cyan/purple glow)
-  - Candy (playful pinks with gold accent)
-  - Mint (fresh teal/green blend)
-  - All themes include light and dark variants, dashboard tile gradients, button styles, table/inputs, and empty-state styling
-
-## Upcoming/Potential Additions
-
 - Auto-update experience
   - Re-enable in-app update checks and installs via Tauri updater (`utils/updater.ts`), with a non-blocking `UpdateNotification` banner and release notes
 - Gems (highlights)
@@ -43,7 +34,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Platform polish
   - Native app menu (File → Import/Export, View → Toggle Sidebar, Help → Shortcuts)
 
-## [1.4.0] - 2025-08-15
+## [0.6.0] - 2025-08-16
+
+### Added
+- **New Vibrant Color Themes**: Four additional beautiful themes in Settings → Color Themes:
+  - **Sunset** 🌅: Warm orange/rose gradient with sunset-inspired colors
+  - **Neon** ⚡: Electric cyan/purple glow with vibrant neon aesthetics
+  - **Candy** 🍬: Playful pinks with gold accents for a sweet, energetic feel
+  - **Mint** 🌿: Fresh teal/green blend with natural, calming tones
+  - All themes include light and dark variants, dashboard tile gradients, button styles, table/inputs, and empty-state styling
+- **Date Format Preferences**: New settings for CSV import date interpretation:
+  - Auto-detection (default) for smart date parsing
+  - YYYY-MM-DD format option
+  - MM/DD/YYYY format option  
+  - DD/MM/YYYY format option
+  - Preference stored per-user and used during CSV imports
+- **Data Cleanup Tools**: Comprehensive data management and validation:
+  - **Duplicate Detection**: Find and resolve duplicate books by title+author
+  - **Non-Compliant Data Finder**: Identify books with invalid status, type, or obtained values
+  - Accessible from Settings → Data Cleanup section
+- **Enhanced CSV Import/Export**: Improved data management with templates:
+  - **Template Generation**: One-click export of empty CSV files with correct headers
+  - **Separate Templates**: Books, Gems, and Reads each have their own template files
+  - **Improved Import Handling**: Better error handling and validation during imports
+- **Database Management Improvements**: Enhanced database control and visibility:
+  - **Database Path Display**: Show current database file location
+  - **File Location Opener**: One-click access to database folder in file manager
+  - **Database Path Changes**: Ability to move database to new location
+  - **Fallback Clipboard**: Automatic path copying if file manager can't be opened
+
+### Changed
+- **Theme System**: Enhanced theme selection with visual previews and better organization
+- **Settings Layout**: Reorganized settings into logical sections with improved visual hierarchy
+- **CSV Import Logic**: Enhanced date parsing with user-configurable format preferences
+- **Database Performance**: Added comprehensive performance indexes for large datasets:
+  - Title, author, and series name indexes with case-insensitive collation
+  - Read dates, book tags, and highlights indexes for faster queries
+  - Automatic index creation during database initialization
+
+### Fixed
+- **CSV Import**: Improved handling of ambiguous dates with configurable format preferences
+- **Database Operations**: Better error handling and validation across all database operations
+- **File System Access**: More robust file opening and path handling with helpful error messages
+
+### Technical Improvements
+- **Performance Indexes**: Added database indexes for improved query performance on large libraries
+- **Error Handling**: Enhanced error messages and user feedback throughout the application
+- **Code Organization**: Better separation of concerns and improved maintainability
+
+## [0.5.0] - 2025-08-15
 
 ### Added
 - Multiple authors per book
@@ -101,7 +140,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Backward compatible: existing data using only `series_name/series_number` continues to work
 - Sorting/search still use the primary series; additional series are displayed and exported
 
-## [1.3.0] - 2025-08-14
+## [0.4.0] - 2025-08-14
 
 ### Added
 - Gems (renamed from Highlights) throughout the app
@@ -127,7 +166,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Standalone gems no longer create fake “book” entries or appear in the Library
 - Export/Import for gems updated to include commentary; imports accept optional commentary
 
-## [1.2.0] - 2025-08-14
+## [0.3.0] - 2025-08-14
 
 ### Added
 - **Collapsible Sidebar Navigation**: Desktop interface now features a modern sidebar that expands on hover
@@ -165,7 +204,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Settings accessible from both desktop and mobile via cog icon
   - Improved UX with modal backdrop and proper close handling
 
-## [1.1.0] - 2025-08-13
+## [0.2.0] - 2025-08-13
 
 ### Added
 - Global search bar in top navigation menu for better accessibility
@@ -189,7 +228,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed duplicate "Filters" title in Library component
 - Updated keyboard shortcuts to work with new global search location
 
-## [1.0.0] - 2025-08-13
+## [0.1.0] - 2025-08-13
 
 ### Added
 - **Core Reading Tracker**: Local SQLite database with books, reads, tags, and highlights
