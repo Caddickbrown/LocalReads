@@ -7,6 +7,7 @@ import Settings from '@/components/Settings'
 import NextUp from '@/components/NextUp'
 import ReReads from '@/components/ReReads'
 import Authors from '@/components/Authors'
+import Series from '@/components/Series'
 import KeyboardShortcutsHelp from '@/components/KeyboardShortcutsHelp'
 // import UpdateNotification from '@/components/UpdateNotification'
 import { useTheme } from '@/hooks/useTheme'
@@ -18,7 +19,7 @@ const isMac = typeof window !== 'undefined' && navigator.platform.toUpperCase().
 
 export default function App(){
   const { dark, mode, setMode, extraTheme, setExtraTheme } = useTheme()
-  const [view, setView] = useState<'library'|'dashboard'|'highlights'|'nextup'|'rereads'|'authors'>('library')
+  const [view, setView] = useState<'library'|'dashboard'|'highlights'|'nextup'|'rereads'|'authors'|'series'>('library')
   const [refresh, setRefresh] = useState(0)
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -52,6 +53,12 @@ export default function App(){
       ...(isMac ? { metaKey: true } : { ctrlKey: true }),
       action: () => setView('authors'),
       description: 'Go to Authors'
+    },
+    {
+      key: 's',
+      ...(isMac ? { metaKey: true } : { ctrlKey: true }),
+      action: () => setView('series'),
+      description: 'Go to Series'
     },
 
     {
@@ -128,6 +135,9 @@ export default function App(){
         break
       case 'authors':
         crumbs.push({ label: 'Authors' })
+        break
+      case 'series':
+        crumbs.push({ label: 'Series' })
         break
       case 'nextup':
         crumbs.push({ label: 'Next Up' })
@@ -220,11 +230,17 @@ export default function App(){
                     onSelectAuthor={(name)=>{ setView('library'); setGlobalSearch(name); }}
                   />
                 )}
+                {view==='series' && (
+                  <Series 
+                    onBack={()=>setView('library')}
+                    onSelectSeries={(name)=>{ setView('library'); setGlobalSearch(name); }}
+                  />
+                )}
               </div>
             </div>
 
             {/* Mobile Navigation Tabs (Fixed) */}
-            <div className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 gap-1 p-2 bg-white/90 dark:bg-zinc-900/90 border-t border-zinc-200 dark:border-zinc-800 backdrop-blur card safe-bottom">
+            <div className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-6 gap-1 p-2 bg-white/90 dark:bg-zinc-900/90 border-t border-zinc-200 dark:border-zinc-800 backdrop-blur card safe-bottom">
               <NavButton active={view==='library'} onClick={()=>setView('library')} extraTheme={extraTheme} mobile>
                 <div className="flex flex-col items-center gap-1">
                   <span className="text-lg">📚</span>
@@ -253,6 +269,12 @@ export default function App(){
                 <div className="flex flex-col items-center gap-1">
                   <span className="text-lg">🔁</span>
                   <span className="text-xs">Re-reads</span>
+                </div>
+              </NavButton>
+              <NavButton active={view==='series'} onClick={()=>setView('series')} extraTheme={extraTheme} mobile>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-lg">🔗</span>
+                  <span className="text-xs">Series</span>
                 </div>
               </NavButton>
             </div>
@@ -316,6 +338,14 @@ export default function App(){
                     onClick={()=>setView('authors')} 
                     icon="👤" 
                     label="Authors" 
+                    expanded={sidebarExpanded}
+                    extraTheme={extraTheme}
+                  />
+                  <SidebarButton 
+                    active={view==='series'} 
+                    onClick={()=>setView('series')} 
+                    icon="🔗" 
+                    label="Series" 
                     expanded={sidebarExpanded}
                     extraTheme={extraTheme}
                   />
@@ -394,6 +424,8 @@ export default function App(){
                         ? 'Gems' 
                         : view === 'authors'
                         ? 'Authors'
+                        : view === 'series'
+                        ? 'Series'
                         : view}
                     </h2>
                   </div>
@@ -439,6 +471,12 @@ export default function App(){
                     <Authors 
                       onBack={()=>setView('library')}
                       onSelectAuthor={(name)=>{ setView('library'); setGlobalSearch(name); }}
+                    />
+                  )}
+                  {view==='series' && (
+                    <Series 
+                      onBack={()=>setView('library')}
+                      onSelectSeries={(name)=>{ setView('library'); setGlobalSearch(name); }}
                     />
                   )}
                 </div>
