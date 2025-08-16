@@ -18,14 +18,18 @@ jobs:
         include:
           # macOS: build separate binaries for Apple Silicon + Intel
           - platform: macos-latest
+            target: aarch64-apple-darwin
             args: "--target aarch64-apple-darwin"
           - platform: macos-latest
+            target: x86_64-apple-darwin
             args: "--target x86_64-apple-darwin"
           # Linux runner for AppImage/.deb (see notes about deps & glibc)
           - platform: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
             args: ""
           # Windows .exe / NSIS installer
           - platform: windows-latest
+            target: x86_64-pc-windows-msvc
             args: ""
 
     runs-on: ${{ matrix.platform }}
@@ -43,7 +47,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           # macOS needs both targets if you build a universal later
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.target }}
 
       - name: Cache Rust build artifacts
         uses: Swatinem/rust-cache@v2
@@ -55,9 +59,8 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          # Tauri v1 used webkit2gtk 4.0; v2 uses 4.1. Keep both if unsure.
+          # Tauri v2 uses webkit2gtk 4.1
           sudo apt-get install -y \
-            libwebkit2gtk-4.0-dev \
             libwebkit2gtk-4.1-dev \
             libappindicator3-dev \
             librsvg2-dev \
@@ -66,16 +69,63 @@ jobs:
       - name: Install JS deps
         run: npm ci
 
-      # Build & create (or update) a GitHub Release and upload bundles
-      - name: Build with tauri-action and publish release
-        uses: tauri-apps/tauri-action@v0
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli@^2.0.0
+
+      # Build the application
+      - name: Build Tauri application
+        run: tauri build ${{ matrix.args }}
+
+      # Create or update GitHub Release
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # __VERSION__ is replaced with your app version (from package.json/tauri.conf)
-          tagName: v__VERSION__
-          releaseName: "v__VERSION__"
-          releaseBody: "See the assets below to download and install."
-          releaseDraft: true
+          tag_name: ${{ github.ref_name }}
+          release_name: ${{ github.ref_name }}
+          body: |
+            See the assets below to download and install.
+            
+            ## Changes
+            - Built with Tauri v2
+            - Cross-platform support
+          draft: true
           prerelease: false
-          args: ${{ matrix.args }}
+
+      # Upload macOS bundles
+      - name: Upload macOS bundles
+        if: matrix.platform == 'macos-latest'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+          asset_name: LocalReads_${{ github.ref_name }}_${{ matrix.target == 'aarch64-apple-darwin' && 'aarch64' || 'x64' }}.dmg
+          asset_content_type: application/octet-stream
+
+      # Upload Linux bundles
+      - name: Upload Linux bundles
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
+          asset_name: LocalReads_${{ github.ref_name }}_linux.AppImage
+          asset_content_type: application/octet-stream
+
+      # Upload Windows bundles
+      - name: Upload Windows bundles
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
+          asset_name: LocalReads_${{ github.ref_name }}_windows.exe
+          asset_content_type: application/octet-stream
