@@ -9,7 +9,7 @@ import EditDialog from './EditDialog'
 import { mergeTitleAuthorKey } from '@/utils/mergeByTitleAuthor'
 
 interface BookRow extends Book {
-  tags: string[]
+  tags: string
   reads_count: number
   latest?: Read | null
 }
@@ -328,7 +328,9 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
 
   useEffect(()=>{ (async()=>{
     // quick tag list derived from books (cheap)
-    const tags = Array.from(new Set(rows.flatMap((r: BookRow) => r.tags))).sort()
+    const tags = Array.from(new Set(rows.flatMap((r: BookRow) => 
+      r.tags && r.tags.trim() ? r.tags.split(';').map(t => t.trim()) : []
+    ))).sort()
     setAllTags(tags)
   })() }, [rows])
 
@@ -792,8 +794,8 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
         bVal = b.latest?.end_date || ''
       } else if (sortBy === 'tags') {
         // For tags, sort by the first tag alphabetically
-        aVal = a.tags.length > 0 ? a.tags.sort()[0] : ''
-        bVal = b.tags.length > 0 ? b.tags.sort()[0] : ''
+        aVal = a.tags && a.tags.trim() ? a.tags.split(';').sort()[0] : ''
+        bVal = b.tags && b.tags.trim() ? b.tags.split(';').sort()[0] : ''
       } else if (sortBy === 'series_name') {
         // For series, we'll handle this specially below to include series number
         aVal = a.series_name || ''
@@ -1174,9 +1176,12 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
                               {book.author}
                             </p>
                             {(book.series_name || (book.series && book.series.length > 0)) && (
-                              <p className="text-sm text-zinc-500 dark:text-zinc-500 truncate" title={[book.series_name && (book.series_number ? `${book.series_name} #${book.series_number}` : book.series_name), ...(book.series||[]).map(s => s.number ? `${s.name} #${s.number}` : s.name)].filter(Boolean).join(' • ')}>
+                              <p className="text-sm text-zinc-500 dark:text-zinc-500 truncate" title={[book.series_name && (book.series_number != null && book.series_number > 0 ? `${book.series_name} #${book.series_number}` : book.series_name), ...(book.series||[]).map(s => s.number != null && s.number > 0 ? `${s.name} #${s.number}` : s.name)].filter(Boolean).join(' • ')}>
                                 {book.series_name || (book.series && book.series[0]?.name)}
-                                {(book.series_number != null ? book.series_number : (book.series && book.series[0]?.number)) && ` #${(book.series_number != null ? book.series_number : (book.series && book.series[0]?.number))}`}
+                                {(() => {
+                                  const n = (book.series_number != null ? book.series_number : (book.series && book.series[0]?.number))
+                                  return n != null ? ` #${n}` : ''
+                                })()}
                                 {book.series && book.series.length > 0 && (book.series_name ? book.series.length : Math.max(0, (book.series||[]).length - 1)) > 0 && (
                                   <span className="ml-1 opacity-70">+{book.series_name ? book.series.length : (book.series.length - 1)}</span>
                                 )}
@@ -1210,23 +1215,23 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
                         ) : null}
                         
                         {/* Tags */}
-                        {book.tags.length > 0 && (
+                        {book.tags && book.tags.trim() && (
                           <div className="mb-3">
                             <div className="flex flex-wrap gap-1">
-                              {book.tags.slice(0, 4).map((tag, tagIndex) => (
-                                <button key={tag} onClick={() => setTag(tag)}>
+                              {book.tags.split(';').slice(0, 4).map((tag, tagIndex) => (
+                                <button key={tag} onClick={() => setTag(tag.trim())}>
                                   <Badge 
                                     variant="primary" 
                                     size="sm"
                                     className="hover:scale-105 transition-transform duration-200 cursor-pointer"
                                   >
-                                    {tag}
+                                    {tag.trim()}
                                   </Badge>
                                 </button>
                               ))}
-                              {book.tags.length > 4 && (
+                              {book.tags.split(';').length > 4 && (
                                 <Badge variant="primary" size="sm" className="opacity-60">
-                                  +{book.tags.length - 4}
+                                  +{book.tags.split(';').length - 4}
                                 </Badge>
                               )}
                             </div>
@@ -1470,11 +1475,14 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
                           {columnVisibility.series && (
                             <td className="py-3 px-2">
                               {(book.series_name || (book.series && book.series.length > 0)) && (
-                                <div className="text-sm" title={[book.series_name && (book.series_number ? `${book.series_name} #${book.series_number}` : book.series_name), ...(book.series||[]).map(s => s.number ? `${s.name} #${s.number}` : s.name)].filter(Boolean).join(' • ')}>
+                                <div className="text-sm" title={[book.series_name && (book.series_number != null ? `${book.series_name} #${book.series_number}` : book.series_name), ...(book.series||[]).map(s => s.number != null ? `${s.name} #${s.number}` : s.name)].filter(Boolean).join(' • ')}>
                                   {book.series_name || (book.series && book.series[0]?.name)}
-                                  {(book.series_number != null ? book.series_number : (book.series && book.series[0]?.number)) && (
-                                    <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-1">#{(book.series_number != null ? book.series_number : (book.series && book.series[0]?.number))}</span>
-                                  )}
+                                                                  {(() => {
+                                  const n = (book.series_number != null ? book.series_number : (book.series && book.series[0]?.number))
+                                  return n != null && n > 0 ? (
+                                    <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-1">#{n}</span>
+                                  ) : null
+                                })()}
                                   {book.series && book.series.length > 0 && (book.series_name ? book.series.length : Math.max(0, (book.series||[]).length - 1)) > 0 && (
                                     <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-1">+{book.series_name ? book.series.length : (book.series.length - 1)}</span>
                                   )}
@@ -1526,19 +1534,19 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
                           {columnVisibility.tags && (
                             <td className="py-3 px-2">
                               <div className="flex flex-wrap gap-1">
-                                {book.tags.slice(0, 3).map((tag, tagIndex) => (
+                                {book.tags && book.tags.trim() ? book.tags.split(';').slice(0, 3).map((tag, tagIndex) => (
                                   <Badge 
                                     key={tag} 
                                     variant="primary" 
                                     size="sm"
                                     className="hover:scale-105 transition-all duration-200 cursor-pointer hover:shadow-sm"
                                   >
-                                    {tag}
+                                    {tag.trim()}
                                   </Badge>
-                                ))}
-                                {book.tags.length > 3 && (
+                                )) : null}
+                                {book.tags && book.tags.trim() && book.tags.split(';').length > 3 && (
                                   <span className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer">
-                                    +{book.tags.length - 3}
+                                    +{book.tags.split(';').length - 3}
                                   </span>
                                 )}
                               </div>
@@ -1814,13 +1822,13 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
                                     {book.series_name && (
                                       <Badge variant="primary" size="sm">
                                         {book.series_name}
-                                        {book.series_number && ` #${book.series_number}`}
+                                        {book.series_number != null ? ` #${book.series_number}` : ''}
                                       </Badge>
                                     )}
-                                    {book.tags.length > 0 && (
+                                    {book.tags && book.tags.trim() && (
                                       <Badge variant="secondary" size="sm">
-                                        {book.tags.slice(0, 2).join(', ')}
-                                        {book.tags.length > 2 && ` +${book.tags.length - 2}`}
+                                        {book.tags.split(';').slice(0, 2).join(', ')}
+                                        {book.tags.split(';').length > 2 && ` +${book.tags.split(';').length - 2}`}
                                       </Badge>
                                     )}
                                   </div>

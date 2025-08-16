@@ -35,24 +35,32 @@ export async function initDb(schemaSql: string) {
   } catch (error) {
     console.warn('Could not create performance indexes:', error)
   }
+  
+  // Run tags migration
+  try {
+    console.log('Running tags migration...')
+    await migrateTagsToNewFormat()
+  } catch (error) {
+    console.warn('Could not run tags migration:', error)
+  }
 }
 
 // -------- Books --------
 export async function listBooks(opts?: {
   q?: string; status?: string; tag?: string | null; year?: number | null;
   limit?: number; offset?: number;
-}): Promise<(Book & { tags: string[]; reads_count: number; latest?: Read | null; })[]> {
+}): Promise<(Book & { tags: string; reads_count: number; latest?: Read | null; })[]> {
   const db = await getDb()
   const where: string[] = []
   const params: any[] = []
 
   if (opts?.q) {
-    where.push(`(lower(b.title) LIKE ? OR lower(b.author) LIKE ? OR lower(b.series_name) LIKE ?)`)
+    where.push(`(lower(b.title) LIKE ? OR lower(b.author) LIKE ? OR lower(b.series_name) LIKE ? OR lower(b.series_json) LIKE ? OR lower(b.tags) LIKE ?)`)
     const q = `%${opts.q.toLowerCase()}%`
-    params.push(q, q, q)
+    params.push(q, q, q, q, q)
   }
   if (opts?.status && opts.status !== 'All') { where.push(`b.status = ?`); params.push(opts.status) }
-  if (opts?.tag && opts.tag !== 'All') { where.push(`t.name = ?`); params.push(opts.tag) }
+  if (opts?.tag && opts.tag !== 'All') { where.push(`lower(b.tags) LIKE ?`); params.push(`%${opts.tag.toLowerCase()}%`) }
   if (opts?.year != null) {
     // Use range filter instead of strftime to leverage index on reads.end_date
     where.push(`r2.end_date BETWEEN ? AND ?`)
@@ -62,7 +70,6 @@ export async function listBooks(opts?: {
   // Simple, reliable query that we know works
   const sql = `
   SELECT b.*,
-         COALESCE(GROUP_CONCAT(DISTINCT t.name), '') AS tag_names,
          (
            SELECT COUNT(*) FROM reads r WHERE r.book_id = b.id
          ) AS reads_count,
@@ -90,12 +97,9 @@ export async function listBooks(opts?: {
            LIMIT 1
          ) AS latest
   FROM books b
-  LEFT JOIN book_tags bt ON bt.book_id = b.id
-  LEFT JOIN tags t ON t.id = bt.tag_id
   /* Join reads only when year filter is active */
   ${opts?.year != null ? 'LEFT JOIN reads r2 ON r2.book_id = b.id' : ''}
   ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-  GROUP BY b.id
   ORDER BY b.title COLLATE NOCASE ASC
   ${opts?.limit ? `LIMIT ${opts.limit}` : ''}
   ${opts?.offset ? `OFFSET ${opts.offset}` : ''};
@@ -148,11 +152,11 @@ export async function listBooks(opts?: {
         comments: r.comments ?? null,
         formats,
         next_up_priority: Boolean(r.next_up_priority),
-        tags: r.tag_names ? String(r.tag_names).split(',') : [],
+        tags: String(r.tags || ''),
         reads_count: Number(r.reads_count || 0),
         highlightsCount: Number(r.highlights_count || 0),
         latest: r.latest ? JSON.parse(r.latest) : null,
-      } as Book & { tags: string[]; reads_count: number; latest?: Read | null }
+      } as Book & { tags: string; reads_count: number; latest?: Read | null }
     })
   } catch (error) {
     console.error('Complex query failed, trying simple fallback:', error)
@@ -186,11 +190,11 @@ export async function listBooks(opts?: {
         comments: r.comments ?? null,
         formats: [],
         next_up_priority: Boolean(r.next_up_priority),
-        tags: [],
+        tags: '',
         reads_count: 0,
         highlightsCount: 0,
         latest: null,
-      } as Book & { tags: string[]; reads_count: number; latest?: Read | null }))
+      } as Book & { tags: string; reads_count: number; latest?: Read | null }))
     } catch (fallbackError) {
       console.error('Fallback query also failed:', fallbackError)
       throw new Error(`Failed to load books: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`)
@@ -262,10 +266,10 @@ export async function upsertBook(b: Partial<Book> & { id?: string }) {
   const id = b.id || uid()
   console.log('Generated/using ID:', id)
   
-  const sql = qp(`INSERT INTO books (id, title, author, series_name, series_number, series_json, obtained, type, status, comments, formats_json, next_up_priority)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  const sql = qp(`INSERT INTO books (id, title, author, series_name, series_number, series_json, obtained, type, status, comments, formats_json, next_up_priority, tags)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
-       title=?, author=?, series_name=?, series_number=?, series_json=?, obtained=?, type=?, status=?, comments=?, formats_json=?, next_up_priority=?`)
+       title=?, author=?, series_name=?, series_number=?, series_json=?, obtained=?, type=?, status=?, comments=?, formats_json=?, next_up_priority=?, tags=?`)
   // Build combined series list: include primary + any additional, deduplicated
   const seriesCombined: Array<{ name: string; number?: number | null }> = []
   if (b.series_name) {
@@ -291,8 +295,8 @@ export async function upsertBook(b: Partial<Book> & { id?: string }) {
   const formatsJson = (b.formats && Array.isArray(b.formats) && b.formats.length)
     ? JSON.stringify(b.formats.filter(f => f && f.format).map(f => ({ format: f.format, obtained: f.obtained ?? null })))
     : null
-  const params = [id, b.title, b.author, b.series_name ?? null, b.series_number ?? null, seriesJson, b.obtained ?? null, b.type ?? 'Book', b.status ?? 'To Read', b.comments ?? null, formatsJson, b.next_up_priority ? 1 : 0,
-     b.title, b.author, b.series_name ?? null, b.series_number ?? null, seriesJson, b.obtained ?? null, b.type ?? 'Book', b.status ?? 'To Read', b.comments ?? null, formatsJson, b.next_up_priority ? 1 : 0]
+  const params = [id, b.title, b.author, b.series_name ?? null, b.series_number ?? null, seriesJson, b.obtained ?? null, b.type ?? 'Book', b.status ?? 'To Read', b.comments ?? null, formatsJson, b.next_up_priority ? 1 : 0, b.tags ?? '',
+     b.title, b.author, b.series_name ?? null, b.series_number ?? null, seriesJson, b.obtained ?? null, b.type ?? 'Book', b.status ?? 'To Read', b.comments ?? null, formatsJson, b.next_up_priority ? 1 : 0, b.tags ?? '']
   
   console.log('Executing SQL:', sql)
   console.log('With parameters:', params)
@@ -315,23 +319,11 @@ export async function toggleNextUpPriority(id: string, priority: boolean) {
 // -------- Tags --------
 export async function setTagsForBook(bookId: string, tagNames: string[]) {
   const db = await getDb()
-  // ensure tags
-  for (const name of tagNames) {
-    await db.execute(qp(`INSERT OR IGNORE INTO tags (name) VALUES (?)`), [name])
-  }
-  // clear existing relations
-  await db.execute(qp(`DELETE FROM book_tags WHERE book_id = ?`), [bookId])
-  // nothing else to do if there are no tags
-  if (tagNames.length === 0) {
-    return
-  }
-  // add new relations
-  const placeholders = tagNames.map(() => '?').join(',')
-  await db.execute(
-    qp(`INSERT INTO book_tags (book_id, tag_id)
-     SELECT ?, t.id FROM tags t WHERE t.name IN (${placeholders})`),
-    [bookId, ...tagNames]
-  )
+  // Convert array to semicolon-delimited string
+  const tagsString = tagNames.filter(Boolean).join(';')
+  
+  // Update the book's tags field directly
+  await db.execute(qp(`UPDATE books SET tags = ? WHERE id = ?`), [tagsString, bookId])
 }
 
 export async function allTags(): Promise<string[]> {
@@ -343,12 +335,15 @@ export async function allTags(): Promise<string[]> {
 export async function tagsForBook(bookId: string): Promise<string[]> {
   const db = await getDb()
   const rows: any[] = await db.select(qp(`
-    SELECT t.name FROM tags t
-    JOIN book_tags bt ON bt.tag_id = t.id
-    WHERE bt.book_id = ?
-    ORDER BY t.name COLLATE NOCASE
+    SELECT tags FROM books WHERE id = ?
   `), [bookId])
-  return rows.map((r: any) => r.name)
+  
+  if (rows.length === 0 || !rows[0].tags) {
+    return []
+  }
+  
+  // Split the semicolon-delimited string into an array
+  return String(rows[0].tags).split(';').filter(Boolean)
 }
 
 // -------- Reads --------
@@ -1252,6 +1247,54 @@ export async function findNonCompliantData(): Promise<{
     }
   } catch (error) {
     console.error('Failed to find non-compliant data:', error)
+    throw error
+  }
+}
+
+// -------- Migration Functions --------
+export async function migrateTagsToNewFormat() {
+  const db = await getDb()
+  
+  try {
+    // Check if the tags column already exists in the books table
+    const tableInfo = await db.select("PRAGMA table_info(books)") as any[]
+    const hasTagsColumn = tableInfo.some(col => col.name === 'tags')
+    
+    if (!hasTagsColumn) {
+      console.log('Adding tags column to books table...')
+      await db.execute("ALTER TABLE books ADD COLUMN tags TEXT")
+    }
+    
+    // Check if there are existing tags in the old format
+    const existingTags = await db.select("SELECT COUNT(*) as count FROM tags") as any[]
+    const hasOldTags = existingTags[0]?.count > 0
+    
+    if (hasOldTags) {
+      console.log('Migrating existing tags to new format...')
+      
+      // Get all books with their old tags
+      const booksWithTags = await db.select(`
+        SELECT b.id, GROUP_CONCAT(t.name, ';') as tag_names
+        FROM books b
+        LEFT JOIN book_tags bt ON bt.book_id = b.id
+        LEFT JOIN tags t ON t.id = bt.tag_id
+        GROUP BY b.id
+        HAVING tag_names IS NOT NULL
+      `) as any[]
+      
+      // Update each book with its tags
+      for (const book of booksWithTags) {
+        if (book.tag_names) {
+          await db.execute("UPDATE books SET tags = ? WHERE id = ?", [book.tag_names, book.id])
+        }
+      }
+      
+      console.log(`Migrated tags for ${booksWithTags.length} books`)
+    }
+    
+    console.log('Tags migration completed successfully')
+  } catch (error) {
+    console.error('Error during tags migration:', error)
     throw error
   }
 }

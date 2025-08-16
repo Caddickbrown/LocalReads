@@ -37,6 +37,7 @@ export type Book = {
   status: Status;
   next_up_priority?: boolean;
   comments?: string;
+  tags?: string; // Semicolon-delimited string
   // Multiple formats owned/available for this book (first item acts as primary)
   formats?: Array<{ format: BookType; obtained?: 'Owned' | 'Borrowed' | 'Library' | 'Wishlist' | 'On Order' | null }>
 }

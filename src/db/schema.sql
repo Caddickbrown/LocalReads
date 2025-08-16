@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS books (
   status TEXT NOT NULL,
   comments TEXT,
   formats_json TEXT,
-  next_up_priority BOOLEAN DEFAULT FALSE
+  next_up_priority BOOLEAN DEFAULT FALSE,
+  tags TEXT
 );
 
 CREATE TABLE IF NOT EXISTS reads (

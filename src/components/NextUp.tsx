@@ -1,12 +1,12 @@
-import React, { useEffect, useState, useMemo } from 'react'
-import { BookOpen, Clock, Star, ArrowUp, ArrowDown, Calendar, User, Hash, Search } from 'lucide-react'
+import React, { useEffect, useState, useMemo, useCallback } from 'react'
+import { BookOpen, Clock, Star, ArrowUp, ArrowDown, Calendar, User, Hash, Search, ChevronDown, Loader2 } from 'lucide-react'
 import type { Book, Read } from '@/types'
 import { listBooks, toggleNextUpPriority } from '@/db/repo'
 import { Card, CardHeader, CardContent, Button, Badge, EmptyState, Spinner, ProgressBar, Input } from './ui'
 import EditDialog from './EditDialog'
 
 interface NextUpBook extends Book {
-  tags: string[]
+  tags: string
   reads_count: number
   latest?: Read | null
   priority_score: number
@@ -21,9 +21,30 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
   const [editingBook, setEditingBook] = useState<Book | null>(null)
   const [q, setQ] = useState('')
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [totalBooks, setTotalBooks] = useState<number>(0)
+  const [booksPerPage, setBooksPerPage] = useState(25)
+
   useEffect(() => {
     loadNextUpBooks()
   }, [])
+
+  // Debug: Log all books when they change
+  useEffect(() => {
+    if (books.length > 0) {
+      console.log('=== ALL BOOKS IN NEXT UP ===')
+      books.forEach((book, index) => {
+        console.log(`Book ${index + 1}:`, book.title)
+        console.log('  Series name:', book.series_name)
+        console.log('  Series number:', book.series_number)
+        console.log('  Series array:', (book as any).series)
+        console.log('  ---')
+      })
+    }
+  }, [books])
 
   const handleToggleNextUp = async (bookId: string, currentPriority: boolean) => {
     try {
@@ -35,8 +56,13 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
     }
   }
 
-  const loadNextUpBooks = async () => {
-    setIsLoading(true)
+  const loadNextUpBooks = useCallback(async (page: number = 1, append: boolean = false) => {
+    if (page === 1) {
+      setIsLoading(true)
+    } else {
+      setIsLoadingMore(true)
+    }
+    
     try {
       // Get books with status "To Read" and "Paused"
       const [toReadBooks, pausedBooks] = await Promise.all([
@@ -67,7 +93,7 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
           if ((book as any).highlightsCount > 0) score += 15
           
           // Books with tags get slight priority (user categorized them)
-          if (book.tags.length > 0) score += 5
+          if (book.tags && book.tags.trim()) score += 5
           
           // Add some randomization to break ties
           score += Math.random() * 10
@@ -75,70 +101,113 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
         
         return { ...book, priority_score: score }
       })
+
+      // Apply search filter if query exists
+      const filteredBooks = q.trim() ? allBooks.filter((b) => {
+        const query = q.trim().toLowerCase()
+        const haystack = [
+          b.title,
+          b.author,
+          b.series_name || '',
+          ...(Array.isArray((b as any).series) ? ((b as any).series as any[]).map((s: any) => s?.name || '') : []),
+          b.tags || ''
+        ].join(' ').toLowerCase()
+        return haystack.includes(query)
+      }) : allBooks
+
+      // Apply sorting
+      const sortedBooks = [...filteredBooks].sort((a, b) => {
+        let aVal: any, bVal: any
+        
+        switch (sortBy) {
+          case 'priority':
+            aVal = a.priority_score
+            bVal = b.priority_score
+            break
+          case 'title':
+            aVal = a.title.toLowerCase()
+            bVal = b.title.toLowerCase()
+            break
+          case 'author':
+            aVal = a.author.toLowerCase()
+            bVal = b.author.toLowerCase()
+            break
+          case 'series':
+            aVal = a.series_name?.toLowerCase() || ''
+            bVal = b.series_name?.toLowerCase() || ''
+            break
+          case 'added':
+            // Use a simple heuristic based on when they might have been added
+            aVal = a.id
+            bVal = b.id
+            break
+          default:
+            aVal = a.priority_score
+            bVal = b.priority_score
+        }
+        
+        if (sortBy === 'priority' || sortBy === 'added') {
+          // Numeric comparison
+          return sortOrder === 'asc' ? aVal - bVal : bVal - aVal
+        } else {
+          // String comparison
+          return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal)
+        }
+      })
+
+      // Apply pagination
+      const startIndex = (page - 1) * booksPerPage
+      const endIndex = startIndex + booksPerPage
+      const paginatedBooks = sortedBooks.slice(startIndex, endIndex)
+
+      if (append) {
+        setBooks(prev => [...prev, ...paginatedBooks])
+      } else {
+        setBooks(paginatedBooks)
+        setCurrentPage(1)
+      }
+
+      // Check if we have more books
+      setHasMore(endIndex < sortedBooks.length)
+      setTotalBooks(sortedBooks.length)
       
-      setBooks(allBooks)
     } catch (error) {
       console.error('Error loading next up books:', error)
     } finally {
       setIsLoading(false)
+      setIsLoadingMore(false)
     }
-  }
+  }, [q, sortBy, sortOrder, booksPerPage])
 
-  const filteredBooks = useMemo(() => {
-    const query = q.trim().toLowerCase()
-    if (!query) return books
-    return books.filter((b) => {
-      const haystack = [
-        b.title,
-        b.author,
-        b.series_name || '',
-        ...(Array.isArray((b as any).series) ? ((b as any).series as any[]).map((s: any) => s?.name || '') : []),
-        ...(Array.isArray(b.tags) ? b.tags : [])
-      ].join(' ').toLowerCase()
-      return haystack.includes(query)
-    })
-  }, [books, q])
+  // Load more books function
+  const handleLoadMore = useCallback(() => {
+    if (!isLoadingMore && hasMore) {
+      const nextPage = currentPage + 1
+      setCurrentPage(nextPage)
+      loadNextUpBooks(nextPage, true)
+    }
+  }, [isLoadingMore, hasMore, currentPage, loadNextUpBooks])
 
-  const sortedBooks = useMemo(() => {
-    return [...filteredBooks].sort((a, b) => {
-      let aVal: any, bVal: any
-      
-      switch (sortBy) {
-        case 'priority':
-          aVal = a.priority_score
-          bVal = b.priority_score
-          break
-        case 'title':
-          aVal = a.title.toLowerCase()
-          bVal = b.title.toLowerCase()
-          break
-        case 'author':
-          aVal = a.author.toLowerCase()
-          bVal = b.author.toLowerCase()
-          break
-        case 'series':
-          aVal = a.series_name?.toLowerCase() || ''
-          bVal = b.series_name?.toLowerCase() || ''
-          break
-        case 'added':
-          // Use a simple heuristic based on when they might have been added
-          aVal = a.id
-          bVal = b.id
-          break
-        default:
-          aVal = a.priority_score
-          bVal = b.priority_score
-      }
-      
-      if (sortBy === 'priority' || sortBy === 'added') {
-        // Numeric comparison
-        return sortOrder === 'asc' ? aVal - bVal : bVal - aVal
-      } else {
-        // String comparison
-        return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal)
-      }
-    })
-  }, [filteredBooks, sortBy, sortOrder])
+  // Handle changing books per page
+  const handleBooksPerPageChange = useCallback((newBooksPerPage: number) => {
+    setBooksPerPage(newBooksPerPage)
+    setCurrentPage(1)
+    // Add a small delay to show the transition
+    setTimeout(() => {
+      setBooks([])
+      setHasMore(true)
+      // Reload with new page size
+      loadNextUpBooks(1, false)
+    }, 300)
+  }, [loadNextUpBooks])
+
+  // Reload books when search, sort, or filters change
+  useEffect(() => {
+    loadNextUpBooks(1, false)
+  }, [q, sortBy, sortOrder, loadNextUpBooks])
+
+  // Use books directly since filtering and sorting are now handled in loadNextUpBooks
+  const displayBooks = books
 
   const handleSortChange = (newSortBy: typeof sortBy) => {
     if (sortBy === newSortBy) {
@@ -158,7 +227,7 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
     setShowEditDialog(false)
     setEditingBook(null)
     // Refresh the books list
-    loadNextUpBooks()
+    loadNextUpBooks(1, false)
   }
 
   
@@ -170,7 +239,7 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
           <div>
             <h2 className="text-heading-2 flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400"/> 
-              Next Up ({sortedBooks.length})
+              Next Up ({totalBooks})
             </h2>
             <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
               Your reading queue, prioritized by engagement and context
@@ -222,7 +291,7 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
             <Spinner size="lg" className="mb-4" />
             <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading your reading queue...</p>
           </div>
-        ) : sortedBooks.length === 0 ? (
+        ) : displayBooks.length === 0 ? (
           <EmptyState
             illustration="books"
             title="Your reading queue is empty"
@@ -241,7 +310,7 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
           />
         ) : (
           <div className="space-y-4">
-            {sortedBooks.map((book, index) => (
+            {displayBooks.map((book, index) => (
               <div 
                 key={book.id} 
                 className={`bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 hover:shadow-md transition-all duration-300 hover:border-indigo-300 dark:hover:border-indigo-600 group cursor-pointer`}
@@ -276,15 +345,22 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
                       {book.author}
                     </p>
                     {(book.series_name || (book as any).series?.length) && (
-                      <p className="text-sm text-zinc-500 dark:text-zinc-500 truncate" title={[book.series_name && (book.series_number ? `${book.series_name} #${book.series_number}` : book.series_name), ...(((book as any).series||[]) as any[]).map((s:any) => s.number ? `${s.name} #${s.number}` : s.name)].filter(Boolean).join(' • ')}>
-                        {book.series_name || ((book as any).series?.[0]?.name)}
+                      <p 
+                        className="text-sm text-zinc-500 dark:text-zinc-500 truncate" 
+                        title={book.series_name && (book.series_number != null && book.series_number > 0 ? `${book.series_name} #${book.series_number}` : book.series_name)}
+                      >
+                        {book.series_name}
                         {(() => {
-                          const n = (book.series_number != null ? book.series_number : (book as any).series?.[0]?.number) as number | undefined | null
-                          return n && n > 0 ? ` #${n}` : ''
+                          // ALWAYS prioritize the primary series_number over the series array
+                          const n = book.series_number
+                          // Debug: Show what values we're getting
+                          console.log('Book:', book.title, 'Series data:', {
+                            series_name: book.series_name,
+                            series_number: book.series_number,
+                            final_number: n
+                          })
+                          return n != null && n > 0 ? ` #${n}` : ''
                         })()}
-                        {(book as any).series?.length && ((book.series_name ? (book as any).series.length : Math.max(0, (book as any).series.length - 1)) > 0) && (
-                          <span className="ml-1 opacity-70">+{book.series_name ? (book as any).series.length : ((book as any).series.length - 1)}</span>
-                        )}
                       </p>
                     )}
                   </div>
@@ -332,23 +408,7 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
                   </div>
                 </div>
                 
-                {/* Progress for paused books */}
-                {book.status === 'Paused' && book.latest?.progress_percentage && (
-                  <div className="mb-3">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm text-zinc-600 dark:text-zinc-400">Reading Progress</span>
-                      <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                        {book.latest.current_page || 0} / {book.latest.total_pages || 0}
-                      </span>
-                    </div>
-                    <ProgressBar
-                      value={book.latest.progress_percentage}
-                      size="sm"
-                      showLabel={false}
-                      color="warning"
-                    />
-                  </div>
-                )}
+
                 
                 {/* Context indicators */}
                 <div className="flex flex-wrap gap-2 mb-3">
@@ -379,21 +439,21 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
                 </div>
                 
                 {/* Tags */}
-                {book.tags.length > 0 && (
+                {book.tags && book.tags.trim() && (
                   <div className="flex flex-wrap gap-1">
-                    {book.tags.slice(0, 4).map((tag) => (
+                    {book.tags.split(';').slice(0, 4).map((tag) => (
                       <Badge 
                         key={tag} 
                         variant="primary" 
                         size="sm"
                         className="text-xs"
                       >
-                        {tag}
+                        {tag.trim()}
                       </Badge>
                     ))}
-                    {book.tags.length > 4 && (
+                    {book.tags.split(';').length > 4 && (
                       <Badge variant="primary" size="sm" className="text-xs opacity-60">
-                        +{book.tags.length - 4}
+                        +{book.tags.split(';').length - 4}
                       </Badge>
                     )}
                   </div>
@@ -402,6 +462,66 @@ export default function NextUp({ onBack }: { onBack: () => void }) {
             ))}
           </div>
         )}
+
+        {/* Pagination Controls */}
+        {hasMore && (
+          <div className="flex justify-center pt-6">
+            <Button
+              onClick={handleLoadMore}
+              disabled={isLoadingMore}
+              variant="secondary"
+              size="lg"
+              className="px-8 transition-all duration-300"
+            >
+              {isLoadingMore ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Loading more books...
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4 mr-2" />
+                  Load More Books ({booksPerPage})
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+        
+        {/* Loading indicator for pagination */}
+        {isLoadingMore && (
+          <div className="flex justify-center pt-4">
+            <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading more books...
+            </div>
+          </div>
+        )}
+        
+        {/* Books Per Page Toggle */}
+        <div className="flex justify-center pt-4 border-t border-zinc-200 dark:border-zinc-700">
+          <div className="flex items-center gap-3 text-sm">
+            <span className="text-zinc-600 dark:text-zinc-400">Books per page:</span>
+            <div className="flex gap-1">
+              {[25, 50, 100].map((size) => (
+                <button
+                  key={size}
+                  onClick={() => handleBooksPerPageChange(size)}
+                  className={`px-3 py-1 rounded-lg transition-all duration-200 ${
+                    booksPerPage === size
+                      ? 'bg-indigo-500 text-white shadow-md'
+                      : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-600'
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+            <span className="text-zinc-500 dark:text-zinc-400 text-xs">
+              (Total: {totalBooks} books)
+            </span>
+          </div>
+        </div>
       </CardContent>
       
       {showEditDialog && (

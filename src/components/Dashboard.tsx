@@ -356,7 +356,7 @@ export default function Dashboard({ onBack, onYearClick }:{ onBack:()=>void, onY
                                 <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
                                   by {activity.author}
                                   {activity.series_name && ` • ${activity.series_name}`}
-                                  {activity.series_number && ` #${activity.series_number}`}
+                                  {activity.series_number != null ? ` #${activity.series_number}` : ''}
                                 </p>
                                 
                                 {/* Show rating for finished books */}

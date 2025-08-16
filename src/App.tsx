@@ -60,7 +60,6 @@ export default function App(){
       action: () => setView('series'),
       description: 'Go to Series'
     },
-
     {
       key: 'u',
       ...(isMac ? { metaKey: true } : { ctrlKey: true }),
@@ -112,6 +111,16 @@ export default function App(){
       key: '?',
       action: () => setShowKeyboardHelp(prev => !prev),
       description: 'Show/Hide Keyboard Shortcuts'
+    },
+    {
+      key: 's',
+      ...(isMac ? { metaKey: true } : { ctrlKey: true }),
+      shiftKey: true,
+      action: () => {
+        // Dispatch shuffle event for Series/Authors pages
+        window.dispatchEvent(new CustomEvent('shuffle-items'))
+      },
+      description: 'Shuffle Series/Authors'
     }
   ], [view, refresh])
 

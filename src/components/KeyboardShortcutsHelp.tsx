@@ -17,13 +17,15 @@ const shortcuts: KeyboardShortcut[] = [
   { key: `${modifierKey}+L`, description: 'Go to Library', category: 'Navigation' },
   { key: `${modifierKey}+D`, description: 'Go to Dashboard', category: 'Navigation' },
   { key: `${modifierKey}+H`, description: 'Go to Gems', category: 'Navigation' },
-
+  { key: `${modifierKey}+A`, description: 'Go to Authors', category: 'Navigation' },
+  { key: `${modifierKey}+S`, description: 'Go to Series', category: 'Navigation' },
   { key: `${modifierKey}+U`, description: 'Go to Next Up', category: 'Navigation' },
   { key: `${modifierKey}+Shift+R`, description: 'Go to Re-reads', category: 'Navigation' },
   
   // Actions
   { key: `${modifierKey}+N`, description: 'Add New Book', category: 'Actions' },
   { key: `${modifierKey}+R`, description: 'Refresh Library', category: 'Actions' },
+  { key: `${modifierKey}+Shift+S`, description: 'Shuffle Series/Authors Order', category: 'Actions' },
   { key: `${modifierKey}+E`, description: 'Export Library CSV (in Settings)', category: 'Actions' },
   
   // Search & Filters

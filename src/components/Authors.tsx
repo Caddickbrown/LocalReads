@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Search, User } from 'lucide-react'
+import { Search, User, Shuffle } from 'lucide-react'
 import { listBooks } from '@/db/repo'
 import type { Book } from '@/types'
 import { Card, CardHeader, CardContent, Input, EmptyState, Badge, Button } from './ui'
 
 export default function Authors({ onBack, onSelectAuthor }: { onBack: () => void; onSelectAuthor: (author: string) => void }){
-  const [books, setBooks] = useState<(Book & { tags: string[] })[]>([])
+  const [books, setBooks] = useState<(Book & { tags: string })[]>([])
   const [q, setQ] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const [randomSeed, setRandomSeed] = useState(0)
 
   useEffect(() => { (async () => {
     setIsLoading(true)
@@ -18,6 +19,16 @@ export default function Authors({ onBack, onSelectAuthor }: { onBack: () => void
       setIsLoading(false)
     }
   })() }, [])
+
+  // Listen for shuffle keyboard shortcut
+  useEffect(() => {
+    const handleShuffle = () => {
+      setRandomSeed(Date.now())
+    }
+    
+    window.addEventListener('shuffle-items', handleShuffle)
+    return () => window.removeEventListener('shuffle-items', handleShuffle)
+  }, [])
 
   const authors = useMemo(() => {
     const counts = new Map<string, number>()
@@ -35,12 +46,29 @@ export default function Authors({ onBack, onSelectAuthor }: { onBack: () => void
       const needle = q.trim().toLowerCase()
       entries = entries.filter(([name]) => name.toLowerCase().includes(needle))
     }
+    // If we have a random seed, shuffle the entries
+    if (randomSeed) {
+      // Use a seeded random number generator for consistent shuffling
+      const seededRandom = (seed: number) => {
+        const x = Math.sin(seed) * 10000
+        return x - Math.floor(x)
+      }
+      
+      // Fisher-Yates shuffle with seeded random
+      for (let i = entries.length - 1; i > 0; i--) {
+        const j = Math.floor(seededRandom(randomSeed + i) * (i + 1))
+        ;[entries[i], entries[j]] = [entries[j], entries[i]]
+      }
+      
+      return entries
+    }
+    
+    // Otherwise, apply normal sorting: by count desc then name asc
     return entries.sort((a, b) => {
-      // sort by count desc then name asc
       if (b[1] !== a[1]) return b[1] - a[1]
       return a[0].localeCompare(b[0])
     })
-  }, [books, q])
+  }, [books, q, randomSeed])
 
   return (
     <div className="grid grid-cols-12 gap-4">
@@ -55,14 +83,26 @@ export default function Authors({ onBack, onSelectAuthor }: { onBack: () => void
                   <Badge variant="secondary" size="sm">{authors.length}</Badge>
                 )}
               </div>
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-70" />
-                <Input
-                  className="pl-9 w-64"
-                  placeholder="Search authors..."
-                  value={q}
-                  onChange={(e:any)=>setQ(e.target.value)}
-                />
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setRandomSeed(Date.now())}
+                  className="flex items-center gap-2"
+                  title="Shuffle authors order"
+                >
+                  <Shuffle className="w-4 h-4" />
+                  Shuffle
+                </Button>
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-70" />
+                  <Input
+                    className="pl-9 w-64"
+                    placeholder="Search authors..."
+                    value={q}
+                    onChange={(e:any)=>setQ(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
           </CardHeader>

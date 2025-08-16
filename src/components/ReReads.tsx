@@ -5,7 +5,7 @@ import { listBooks, readsForBook } from '@/db/repo'
 import { Card, CardHeader, CardContent, Button, Badge, EmptyState, Spinner, Input } from './ui'
 
 interface ReReadBook extends Book {
-  tags: string[]
+  tags: string
   reads_count: number
   latest?: Read | null
   all_reads: Read[]
@@ -237,11 +237,11 @@ export default function ReReads({ onBack }: { onBack: () => void }) {
                         by {book.author}
                       </p>
                       {(book.series_name || (book as any).series?.length) && (
-                        <p className="text-sm text-zinc-500 dark:text-zinc-500" title={[book.series_name && (book.series_number ? `${book.series_name} #${book.series_number}` : book.series_name), ...(((book as any).series||[]) as any[]).map((s:any) => s.number ? `${s.name} #${s.number}` : s.name)].filter(Boolean).join(' • ')}>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-500" title={[book.series_name && (book.series_number != null && book.series_number > 0 ? `${book.series_name} #${book.series_number}` : book.series_name), ...(((book as any).series||[]) as any[]).map((s:any) => s.number != null && s.number > 0 ? `${s.name} #${s.number}` : s.name)].filter(Boolean).join(' • ')}>
                           {book.series_name || ((book as any).series?.[0]?.name)}
                           {(() => {
                             const n = (book.series_number != null ? book.series_number : (book as any).series?.[0]?.number) as number | undefined | null
-                            return n && n > 0 ? ` #${n}` : ''
+                            return n != null && n > 0 ? ` #${n}` : ''
                           })()}
                           {(book as any).series?.length && ((book.series_name ? (book as any).series.length : Math.max(0, (book as any).series.length - 1)) > 0) && (
                             <span className="ml-1 opacity-70">+{book.series_name ? (book as any).series.length : ((book as any).series.length - 1)}</span>
