@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Settings as SettingsIcon, RefreshCw, Download, Upload, FileDown, X } from 'lucide-react'
+import { Settings as SettingsIcon, RefreshCw, Download, Upload, FileDown, X, ListChecks } from 'lucide-react'
 import { Card, CardHeader, CardContent, Button, Input, Textarea, ModalBackdrop } from './ui'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { save, open } from '@tauri-apps/plugin-dialog'
@@ -15,12 +15,12 @@ const copyToClipboard = async (text: string): Promise<void> => {
     throw new Error(`Failed to copy to clipboard: ${error}`)
   }
 }
-import { exportCsvFor, listBooks, exportJson, importJson, exportHighlightsCsv, importHighlightsCsv, databasePath, setDatabasePath } from '@/db/repo'
+import { exportCsvFor, listBooks, exportJson, importJson, exportHighlightsCsv, importHighlightsCsv, exportReadsCsv, importReadsCsv, databasePath, setDatabasePath } from '@/db/repo'
 
   // Template generation functions
 const generateBooksCsvTemplate = () => {
   const headers = [
-    'title','author','seriesName','seriesNumber','obtained','type','status','tags','latestStart','latestEnd','latestRating','latestReview','highlightsCount'
+    'title','author','seriesNames','seriesNumbers','obtained','type','status','tags','latestStart','latestEnd','latestRating','latestReview','highlightsCount'
   ]
   return headers.join(',') + '\n'
 }
@@ -29,9 +29,14 @@ const generateHighlightsCsvTemplate = () => {
   const headers = ['id','book','author','text','created_at','commentary']
   return headers.join(',') + '\n'
 }
+const generateReadsCsvTemplate = () => {
+  const headers = ['id','book_id','title','author','start_date','end_date','rating','review','format','current_page','total_pages','progress_percentage']
+  return headers.join(',') + '\n'
+}
 // import { autoUpdater } from '@/utils/updater'
 
 import { ThemeMode, ExtraTheme } from '@/hooks/useTheme'
+import { getStoredDatePreference, setStoredDatePreference, StoredDatePreference } from '@/state/storage'
 
 export default function Settings({ 
   mode, 
@@ -51,6 +56,7 @@ export default function Settings({
   const [exporting, setExporting] = useState(false)
   const [importing, setImporting] = useState(false)
   const [dbPath, setDbPath] = useState<string>('localreads.sqlite')
+  const [datePref, setDatePref] = useState<StoredDatePreference>(getStoredDatePreference())
 
   const handleCheckUpdate = async () => {
     setIsChecking(true)
@@ -110,7 +116,7 @@ export default function Settings({
         <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <SettingsIcon className="w-6 h-6 text-indigo-600" />
-            <h2 className="text-xl font-semibold">Settings</h2>
+            <h2 className="text-heading-2">Settings</h2>
           </div>
           <Button variant="ghost" onClick={onBack} className="p-2">
             <X className="w-5 h-5" />
@@ -143,6 +149,27 @@ export default function Settings({
                 icon="💻"
                 label="System"
               />
+            </div>
+          </div>
+
+          <div>
+            <div className="text-sm font-medium mb-1">📅 Date Format</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Used when importing CSVs to interpret ambiguous dates</div>
+            <div className="flex gap-1 p-0.5 bg-zinc-100 dark:bg-gray-800 rounded-lg w-fit">
+              {([
+                { key: 'auto', label: 'Auto' },
+                { key: 'YMD', label: 'YYYY-MM-DD' },
+                { key: 'MDY', label: 'MM/DD/YYYY' },
+                { key: 'DMY', label: 'DD/MM/YYYY' }
+              ] as Array<{ key: StoredDatePreference, label: string }>).map((opt)=> (
+                <ModeButton
+                  key={opt.key}
+                  selected={datePref === opt.key}
+                  onClick={()=>{ setDatePref(opt.key); setStoredDatePreference(opt.key) }}
+                  icon="📆"
+                  label={opt.label}
+                />
+              ))}
             </div>
           </div>
 
@@ -184,6 +211,34 @@ export default function Settings({
                 emoji="🌸"
                 label="Lavender"
                 colors={['#8b5cf6', '#7c3aed']}
+              />
+              <ThemeButton
+                selected={extraTheme === 'sunset'}
+                onClick={() => setExtraTheme('sunset')}
+                emoji="🌅"
+                label="Sunset"
+                colors={['#f97316', '#fb7185']}
+              />
+              <ThemeButton
+                selected={extraTheme === 'neon'}
+                onClick={() => setExtraTheme('neon')}
+                emoji="⚡"
+                label="Neon"
+                colors={['#22d3ee', '#a78bfa']}
+              />
+              <ThemeButton
+                selected={extraTheme === 'candy'}
+                onClick={() => setExtraTheme('candy')}
+                emoji="🍬"
+                label="Candy"
+                colors={['#ec4899', '#f472b6']}
+              />
+              <ThemeButton
+                selected={extraTheme === 'mint'}
+                onClick={() => setExtraTheme('mint')}
+                emoji="🌿"
+                label="Mint"
+                colors={['#2dd4bf', '#34d399']}
               />
             </div>
           </div>
@@ -425,7 +480,7 @@ export default function Settings({
                       })
                       if (filePath) {
                         await writeTextFile(filePath as string, template)
-                        alert('Books CSV template saved successfully!\n\nThe template includes these columns:\ntitle, author, seriesName, seriesNumber, obtained, type, status, tags, latestStart, latestEnd, latestRating, latestReview, highlightsCount')
+                        alert('Books CSV template saved successfully!\n\nThe template includes these columns:\ntitle, author, seriesName, seriesNumber, seriesNames, seriesNumbers, obtained, type, status, tags, latestStart, latestEnd, latestRating, latestReview, highlightsCount')
                       }
                     } catch (error) {
                       alert(`Template export failed: ${error}`)
@@ -520,6 +575,102 @@ export default function Settings({
                   variant="secondary"
                 >
                   <FileDown className="w-3 h-3"/> Template
+                </Button>
+              </div>
+            </div>
+
+            {/* Reads Section */}
+            <div className="mb-4">
+              <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-2 flex items-center gap-2">
+                📖 Reads
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={async ()=>{
+                    setExporting(true)
+                    try {
+                      const csv = await exportReadsCsv()
+                      const filePath = await save({
+                        title: 'Export Reads CSV',
+                        defaultPath: 'reads.csv',
+                        filters: [{ name: 'CSV', extensions: ['csv'] }]
+                      })
+                      if (filePath) {
+                        await writeTextFile(filePath as string, csv)
+                        alert('Reads CSV exported successfully!')
+                      }
+                    } catch (error) {
+                      alert(`Reads export failed: ${error}`)
+                    } finally {
+                      setExporting(false)
+                    }
+                  }}
+                  className="flex items-center gap-1 justify-center text-xs"
+                  size="sm"
+                  disabled={exporting}
+                >
+                  <FileDown className="w-3 h-3"/> {exporting ? 'Exporting…' : 'Export CSV'}
+                </Button>
+                <Button
+                  onClick={async ()=>{
+                    setImporting(true)
+                    try {
+                      const filePath = await open({ multiple: false, filters: [{ name: 'CSV', extensions: ['csv'] }] })
+                      if (!filePath) return
+                      const text = await readTextFile(filePath as string)
+                      await importReadsCsv(text)
+                      alert('Reads CSV import complete')
+                    } finally {
+                      setImporting(false)
+                    }
+                  }}
+                  className="flex items-center gap-1 justify-center text-xs"
+                  size="sm"
+                  disabled={importing}
+                >
+                  <Upload className="w-3 h-3"/> {importing ? 'Importing…' : 'Import CSV'}
+                </Button>
+                <Button
+                  onClick={async ()=>{
+                    try {
+                      const template = generateReadsCsvTemplate()
+                      const filePath = await save({
+                        title: 'Save Reads CSV Template',
+                        defaultPath: 'reads_template.csv',
+                        filters: [{ name: 'CSV', extensions: ['csv'] }]
+                      })
+                      if (filePath) {
+                        await writeTextFile(filePath as string, template)
+                        alert('Reads CSV template saved successfully!\n\nColumns:\nid, book_id, title, author, start_date, end_date, rating, review, format, current_page, total_pages, progress_percentage')
+                      }
+                    } catch (error) {
+                      alert(`Template export failed: ${error}`)
+                    }
+                  }}
+                  className="flex items-center gap-1 justify-center text-xs"
+                  size="sm"
+                  variant="secondary"
+                >
+                  <FileDown className="w-3 h-3"/> Template
+                </Button>
+              </div>
+            </div>
+
+            {/* Data Cleanup */}
+            <div>
+              <div className="text-sm font-medium mb-2">🧹 Data Cleanup</div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={() => {
+                    onBack()
+                    setTimeout(() => {
+                      window.dispatchEvent(new CustomEvent('show-duplicates'))
+                    }, 50)
+                  }}
+                  className="flex items-center gap-1 justify-center text-xs"
+                  size="sm"
+                >
+                  <ListChecks className="w-3 h-3"/> Find Duplicates
                 </Button>
               </div>
             </div>
@@ -664,7 +815,11 @@ function ThemeCard({ selected, onClick, title, description, colors, emoji, theme
     sepia: { border: '#d2691e', bg: '#fef7ed', text: '#451a03', dot: '#d2691e' },
     forest: { border: '#22c55e', bg: '#f0fdf4', text: '#052e16', dot: '#22c55e' },
     ocean: { border: '#0ea5e9', bg: '#f0f9ff', text: '#0c2340', dot: '#0ea5e9' },
-    lavender: { border: '#8b5cf6', bg: '#faf5ff', text: '#2e1065', dot: '#8b5cf6' }
+    lavender: { border: '#8b5cf6', bg: '#faf5ff', text: '#2e1065', dot: '#8b5cf6' },
+    sunset: { border: '#f97316', bg: '#fff7ed', text: '#7c2d12', dot: '#f97316' },
+    neon: { border: '#22d3ee', bg: '#f8fbff', text: '#0b1020', dot: '#22d3ee' },
+    candy: { border: '#ec4899', bg: '#fff1f7', text: '#831843', dot: '#ec4899' },
+    mint: { border: '#2dd4bf', bg: '#f0fdfa', text: '#064e3b', dot: '#2dd4bf' }
   }
   
   // Define theme-specific colors for selected state - dark mode
@@ -673,7 +828,11 @@ function ThemeCard({ selected, onClick, title, description, colors, emoji, theme
     sepia: { border: '#d2691e', bg: '#451a03', text: '#fed7aa', dot: '#d2691e' },
     forest: { border: '#22c55e', bg: '#14532d', text: '#bbf7d0', dot: '#22c55e' },
     ocean: { border: '#0ea5e9', bg: '#0c4a6e', text: '#bae6fd', dot: '#0ea5e9' },
-    lavender: { border: '#8b5cf6', bg: '#581c87', text: '#e9d5ff', dot: '#8b5cf6' }
+    lavender: { border: '#8b5cf6', bg: '#581c87', text: '#e9d5ff', dot: '#8b5cf6' },
+    sunset: { border: '#ea580c', bg: '#140f0e', text: '#ffe4e6', dot: '#ea580c' },
+    neon: { border: '#06b6d4', bg: '#0b0f19', text: '#e0f2fe', dot: '#06b6d4' },
+    candy: { border: '#db2777', bg: '#160f15', text: '#fce7f3', dot: '#db2777' },
+    mint: { border: '#14b8a6', bg: '#0c1412', text: '#d1fae5', dot: '#14b8a6' }
   }
   
   const themeColors = isDarkMode ? darkThemeColors : lightThemeColors

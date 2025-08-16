@@ -6,7 +6,17 @@ let overrideDbPath: string | null = null
 
 function isTauriEnvironment(): boolean {
   // Tauri v2 injects __TAURI_INTERNALS__ into the window inside the WebView
-  return typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__ != null
+  const hasTauriInternals = typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__ != null
+  const hasTauriAPI = typeof window !== 'undefined' && (window as any).__TAURI__ != null
+  
+  console.log('Tauri environment check:', { 
+    hasTauriInternals, 
+    hasTauriAPI, 
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
+    platform: typeof navigator !== 'undefined' ? navigator.platform : 'N/A'
+  })
+  
+  return hasTauriInternals || hasTauriAPI
 }
 
 export async function getDb(): Promise<Database> {
@@ -15,18 +25,41 @@ export async function getDb(): Promise<Database> {
     // Initialize the database with Tauri v2 SQL plugin
     // Use app-config base dir; ensure consistent path across dev/prod
     if (!isTauriEnvironment()) {
-      const message = 'Database is unavailable: not running inside the Tauri app. Please use the native window (npm run tauri:dev) or the installed app.'
-      console.error(message)
-      throw new Error(message)
-    }
-    // Resolve app config dir and load an explicit file path
-    try {
-      const target = await resolveDatabasePath()
-      console.log('SQLite file location:', target)
-      dbPromise = Database.load(`sqlite:${target}`)
-    } catch {
-      // Fallback to default configured name if path resolution fails
-      dbPromise = Database.load('sqlite:localreads.sqlite')
+      console.warn('Tauri environment not detected, using development fallback')
+      
+      // In development mode, create a mock database or use a local SQLite file
+      if (process.env.NODE_ENV === 'development') {
+        try {
+          // Try to use a local SQLite file for development
+          dbPromise = Database.load('sqlite:./dev-localreads.sqlite')
+          console.log('Using development SQLite file')
+        } catch (error) {
+          console.error('Failed to load development database:', error)
+          throw new Error('Database is unavailable: not running inside the Tauri app. Please use the native window (npm run tauri:dev) or the installed app.')
+        }
+      } else {
+        const message = 'Database is unavailable: not running inside the Tauri app. Please use the native window (npm run tauri:dev) or the installed app.'
+        console.error(message)
+        throw new Error(message)
+      }
+    } else {
+      // Resolve app config dir and load an explicit file path
+      try {
+        const target = await resolveDatabasePath()
+        console.log('SQLite file location:', target)
+        dbPromise = Database.load(`sqlite:${target}`)
+        console.log('Database loaded successfully')
+      } catch (error) {
+        console.error('Failed to resolve database path, using fallback:', error)
+        // Fallback to default configured name if path resolution fails
+        try {
+          dbPromise = Database.load('sqlite:localreads.sqlite')
+          console.log('Using fallback database path')
+        } catch (fallbackError) {
+          console.error('Fallback database loading also failed:', fallbackError)
+          throw new Error(`Failed to load database: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`)
+        }
+      }
     }
     
     // Initialize the database schema
@@ -49,11 +82,14 @@ async function resolveDatabasePath(): Promise<string> {
 }
 
 async function initDatabase() {
+  // Get the database instance directly from the promise
   const db = await dbPromise
-  if (!db) return
+  if (!db) {
+    throw new Error('Database promise is null')
+  }
   
-  // Initialize database schema
-  await execSchema(`
+  // Initialize database schema directly without calling execSchema
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS books (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
@@ -65,7 +101,8 @@ async function initDatabase() {
       type TEXT NOT NULL DEFAULT 'Book',
       status TEXT NOT NULL DEFAULT 'To Read',
       comments TEXT,
-      formats_json TEXT
+      formats_json TEXT,
+      next_up_priority BOOLEAN DEFAULT FALSE
     );
 
     CREATE TABLE IF NOT EXISTS tags (
@@ -89,6 +126,9 @@ async function initDatabase() {
       rating INTEGER,
       review TEXT,
       format TEXT,
+      current_page INTEGER DEFAULT 0,
+      total_pages INTEGER DEFAULT 0,
+      progress_percentage INTEGER DEFAULT 0,
       FOREIGN KEY (book_id) REFERENCES books (id) ON DELETE CASCADE
     );
 
@@ -103,11 +143,13 @@ async function initDatabase() {
       FOREIGN KEY (book_id) REFERENCES books (id) ON DELETE SET NULL
     );
 
-    CREATE INDEX IF NOT EXISTS idx_books_title ON books (title);
-    CREATE INDEX IF NOT EXISTS idx_books_author ON books (author);
-    CREATE INDEX IF NOT EXISTS idx_books_status ON books (status);
-    CREATE INDEX IF NOT EXISTS idx_reads_book_id ON reads (book_id);
-    CREATE INDEX IF NOT EXISTS idx_highlights_book_id ON highlights (book_id);
+    CREATE TABLE IF NOT EXISTS reading_goals (
+      id TEXT PRIMARY KEY,
+      goal_type TEXT NOT NULL,
+      target_period TEXT NOT NULL,
+      target_count INTEGER NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
   `)
 
   // Attempt to add new columns for migrations if they don't exist
@@ -120,18 +162,89 @@ async function initDatabase() {
   try { await db.execute(`ALTER TABLE books ADD COLUMN series_json TEXT`) } catch {}
   try { await db.execute(`ALTER TABLE books ADD COLUMN comments TEXT`) } catch {}
   try { await db.execute(`ALTER TABLE books ADD COLUMN formats_json TEXT`) } catch {}
-  try { 
-    await db.execute(`CREATE TABLE IF NOT EXISTS reading_goals (
-      id TEXT PRIMARY KEY,
-      goal_type TEXT NOT NULL,
-      target_period TEXT NOT NULL,
-      target_count INTEGER NOT NULL,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )`)
-  } catch {}
-
+  
+  // Create performance indexes if they don't exist
+  try {
+    console.log('Creating performance indexes...')
+    await db.execute(`
+      CREATE INDEX IF NOT EXISTS idx_books_title ON books(title COLLATE NOCASE);
+      CREATE INDEX IF NOT EXISTS idx_books_author ON books(author COLLATE NOCASE);
+      CREATE INDEX IF NOT EXISTS idx_books_status ON books(status);
+      CREATE INDEX IF NOT EXISTS idx_books_type ON books(type);
+      CREATE INDEX IF NOT EXISTS idx_books_series_name ON books(series_name COLLATE NOCASE);
+      CREATE INDEX IF NOT EXISTS idx_reads_book_id ON reads(book_id);
+      CREATE INDEX IF NOT EXISTS idx_reads_end_date ON reads(end_date);
+      CREATE INDEX IF NOT EXISTS idx_reads_start_date ON reads(start_date);
+      CREATE INDEX IF NOT EXISTS idx_book_tags_book_id ON book_tags(book_id);
+      CREATE INDEX IF NOT EXISTS idx_book_tags_tag_id ON book_tags(tag_id);
+      CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name COLLATE NOCASE);
+    `)
+    console.log('Performance indexes created successfully')
+  } catch (error) {
+    console.warn('Could not create performance indexes:', error)
+  }
+  
   // Ensure highlights schema supports standalone gems (Windows fresh DBs may lack these columns)
   await ensureHighlightsSchemaUpToDate()
+  
+  // Check if database is empty and add sample data
+  try {
+    const bookCount = await db.select('SELECT COUNT(*) as count FROM books') as any[]
+    if (bookCount.length > 0 && bookCount[0].count === 0) {
+      console.log('Database is empty, adding sample data...')
+      await addSampleData(db)
+    }
+  } catch (error) {
+    console.warn('Could not check/add sample data:', error)
+  }
+}
+
+async function addSampleData(db: Database) {
+  try {
+    // Add sample books
+    await db.execute(`
+      INSERT INTO books (id, title, author, series_name, series_number, obtained, type, status) VALUES
+      ('book1', 'The Name of the Wind', 'Patrick Rothfuss', 'The Kingkiller Chronicle', 1, 'Owned', 'Book', 'Finished'),
+      ('book2', 'Project Hail Mary', 'Andy Weir', NULL, NULL, 'Library', 'Audiobook', 'Finished'),
+      ('book3', 'The Pragmatic Programmer', 'Andrew Hunt, David Thomas', NULL, NULL, 'Owned', 'Ebook', 'To Read'),
+      ('book4', 'Atomic Habits', 'James Clear', NULL, NULL, 'Wishlist', 'Book', 'To Read'),
+      ('book5', 'Dune', 'Frank Herbert', NULL, NULL, 'Borrowed', 'Book', 'Finished')
+    `)
+    
+    // Add sample tags
+    await db.execute(`
+      INSERT INTO tags (id, name) VALUES
+      (1, 'fantasy'),
+      (2, 'sci-fi'),
+      (3, 'non-fiction'),
+      (4, 'dev'),
+      (5, 'self-help'),
+      (6, 'classic'),
+      (7, 'favourites')
+    `)
+    
+    // Add sample book-tag relationships
+    await db.execute(`
+      INSERT INTO book_tags (book_id, tag_id) VALUES
+      ('book1', 1), ('book1', 7),
+      ('book2', 2),
+      ('book3', 3), ('book3', 4),
+      ('book4', 3), ('book4', 5),
+      ('book5', 2), ('book5', 6)
+    `)
+    
+    // Add sample reads
+    await db.execute(`
+      INSERT INTO reads (id, book_id, start_date, end_date, rating) VALUES
+      ('read1', 'book1', '2023-01-15', '2023-02-20', 5),
+      ('read2', 'book2', '2023-03-10', '2023-04-05', 4),
+      ('read5', 'book5', '2023-05-01', '2023-06-15', 5)
+    `)
+    
+    console.log('Sample data added successfully')
+  } catch (error) {
+    console.error('Failed to add sample data:', error)
+  }
 }
 
 export async function execSchema(sql: string) {

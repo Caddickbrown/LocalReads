@@ -74,8 +74,8 @@ export default function Dashboard({ onBack, onYearClick }:{ onBack:()=>void, onY
     <div className="grid grid-cols-12 gap-4">
       <Card className="col-span-12">
         <CardHeader>
-          <h2 className="font-semibold flex items-center gap-2"><BarChart3 className="w-5 h-5"/> Dashboard & Stats</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">Click any tile to filter your library</p>
+          <h2 className="dashboard-title flex items-center gap-2"><BarChart3 className="w-5 h-5"/> Dashboard & Stats</h2>
+          <p className="dashboard-subtitle">Click any tile to filter your library</p>
         </CardHeader>
         <CardContent>
           {isLoadingStats ? (
@@ -146,8 +146,8 @@ export default function Dashboard({ onBack, onYearClick }:{ onBack:()=>void, onY
               {/* Reading Goals Section */}
               <Card className="col-span-12">
                 <CardHeader>
-                  <h3 className="font-semibold flex items-center gap-2">🎯 Reading Goals</h3>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">Set and track your monthly and yearly reading targets</p>
+                  <h3 className="text-heading-2 flex items-center gap-2">🎯 Reading Goals</h3>
+                  <p className="text-body-small text-zinc-600 dark:text-zinc-400">Set and track your monthly and yearly reading targets</p>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -404,7 +404,7 @@ export default function Dashboard({ onBack, onYearClick }:{ onBack:()=>void, onY
 
       <Card className="col-span-12">
         <CardHeader>
-          <div className="font-medium">Books Finished per Year (click a bar)</div>
+          <div className="text-heading-3">Books Finished per Year (click a bar)</div>
         </CardHeader>
         <CardContent>
           {isLoadingChart ? (
@@ -437,7 +437,29 @@ export default function Dashboard({ onBack, onYearClick }:{ onBack:()=>void, onY
                   <XAxis dataKey="year" />
                   <YAxis allowDecimals={false} />
                   <Tooltip />
-                  <Bar dataKey="finished" fill="#6366f1" onClick={(data:any)=>{ const year = Number(data?.activeLabel ?? data?.payload?.year); if(!isNaN(year)) onYearClick(year); }} />
+                  <Bar 
+                    dataKey="finished" 
+                    fill="#6366f1" 
+                    onClick={(data: any, index: number) => {
+                      console.log('Bar clicked with data:', data);
+                      console.log('Index:', index);
+                      console.log('Bars data:', bars);
+                      
+                      // Get the year from the bars array using the index
+                      if (index >= 0 && index < bars.length) {
+                        const year = Number(bars[index].year);
+                        console.log('Year from bars array:', year);
+                        if (!isNaN(year)) {
+                          console.log('Calling onYearClick with year:', year);
+                          onYearClick(year);
+                        } else {
+                          console.log('Invalid year from bars array');
+                        }
+                      } else {
+                        console.log('Invalid index:', index);
+                      }
+                    }}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -460,7 +482,7 @@ function Stat({ label, value, onClick, icon }:{ label:string, value:number, onCl
         onClick={onClick}
       >
         <div className="flex items-center justify-between mb-2">
-          <div className="text-4xl font-semibold leading-tight group-hover:text-white transition-colors">
+          <div className="stat-number group-hover:text-white transition-colors">
             {value}
           </div>
           {icon && (
@@ -469,7 +491,7 @@ function Stat({ label, value, onClick, icon }:{ label:string, value:number, onCl
             </span>
           )}
         </div>
-        <div className="text-sm opacity-90 group-hover:opacity-100 transition-opacity">
+        <div className="stat-label opacity-90 group-hover:opacity-100 transition-opacity">
           {label}
         </div>
       </div>

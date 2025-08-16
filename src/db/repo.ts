@@ -1,4 +1,6 @@
 import { BOOK_TYPES, STATUSES, Book, Read } from '@/types'
+import { parseToIsoDate } from '@/utils/date'
+import { getStoredDatePreference } from '@/state/storage'
 import { getDb, getDatabasePath, setDatabasePath as _setDatabasePath } from './client'
 
 const uid = () => Math.random().toString(36).slice(2, 10)
@@ -12,11 +14,33 @@ function qp(sql: string): string {
 export async function initDb(schemaSql: string) {
   const db = await getDb()
   await db.execute(schemaSql)
+  
+  // Create performance indexes for large datasets
+  try {
+    console.log('Creating performance indexes...')
+    await db.execute(`
+      CREATE INDEX IF NOT EXISTS idx_books_title ON books(title COLLATE NOCASE);
+      CREATE INDEX IF NOT EXISTS idx_books_author ON books(author COLLATE NOCASE);
+      CREATE INDEX IF NOT EXISTS idx_books_status ON books(status);
+      CREATE INDEX IF NOT EXISTS idx_books_type ON books(type);
+      CREATE INDEX IF NOT EXISTS idx_books_series_name ON books(series_name COLLATE NOCASE);
+      CREATE INDEX IF NOT EXISTS idx_reads_book_id ON reads(book_id);
+      CREATE INDEX IF NOT EXISTS idx_reads_end_date ON reads(end_date);
+      CREATE INDEX IF NOT EXISTS idx_reads_start_date ON reads(start_date);
+      CREATE INDEX IF NOT EXISTS idx_book_tags_book_id ON book_tags(book_id);
+      CREATE INDEX IF NOT EXISTS idx_book_tags_tag_id ON book_tags(tag_id);
+      CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name COLLATE NOCASE);
+    `)
+    console.log('Performance indexes created successfully')
+  } catch (error) {
+    console.warn('Could not create performance indexes:', error)
+  }
 }
 
 // -------- Books --------
 export async function listBooks(opts?: {
   q?: string; status?: string; tag?: string | null; year?: number | null;
+  limit?: number; offset?: number;
 }): Promise<(Book & { tags: string[]; reads_count: number; latest?: Read | null; })[]> {
   const db = await getDb()
   const where: string[] = []
@@ -29,12 +53,19 @@ export async function listBooks(opts?: {
   }
   if (opts?.status && opts.status !== 'All') { where.push(`b.status = ?`); params.push(opts.status) }
   if (opts?.tag && opts.tag !== 'All') { where.push(`t.name = ?`); params.push(opts.tag) }
-  if (opts?.year != null) { where.push(`strftime('%Y', r2.end_date) = ?`); params.push(String(opts.year)) }
+  if (opts?.year != null) {
+    // Use range filter instead of strftime to leverage index on reads.end_date
+    where.push(`r2.end_date BETWEEN ? AND ?`)
+    params.push(`${opts.year}-01-01`, `${opts.year}-12-31`)
+  }
 
+  // Simple, reliable query that we know works
   const sql = `
   SELECT b.*,
          COALESCE(GROUP_CONCAT(DISTINCT t.name), '') AS tag_names,
-         COUNT(DISTINCT r.id) AS reads_count,
+         (
+           SELECT COUNT(*) FROM reads r WHERE r.book_id = b.id
+         ) AS reads_count,
          (
            SELECT COUNT(*) 
            FROM highlights h 
@@ -48,7 +79,10 @@ export async function listBooks(opts?: {
              'end_date', r2.end_date,
              'rating', r2.rating,
               'review', r2.review,
-              'format', r2.format
+              'format', r2.format,
+              'current_page', r2.current_page,
+              'total_pages', r2.total_pages,
+              'progress_percentage', r2.progress_percentage
            )
            FROM reads r2
            WHERE r2.book_id = b.id AND (r2.end_date IS NOT NULL)
@@ -58,58 +92,142 @@ export async function listBooks(opts?: {
   FROM books b
   LEFT JOIN book_tags bt ON bt.book_id = b.id
   LEFT JOIN tags t ON t.id = bt.tag_id
-  LEFT JOIN reads r ON r.book_id = b.id
-  LEFT JOIN reads r2 ON r2.book_id = b.id
+  /* Join reads only when year filter is active */
+  ${opts?.year != null ? 'LEFT JOIN reads r2 ON r2.book_id = b.id' : ''}
   ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
   GROUP BY b.id
-  ORDER BY b.title COLLATE NOCASE ASC;
+  ORDER BY b.title COLLATE NOCASE ASC
+  ${opts?.limit ? `LIMIT ${opts.limit}` : ''}
+  ${opts?.offset ? `OFFSET ${opts.offset}` : ''};
   `
-  const rows: any[] = await db.select(qp(sql), params)
-  return rows.map((r: any) => {
-    const series: Array<{ name: string; number?: number | null }> = []
-    const formats: Array<{ format: string; obtained?: string | null }> = []
-    // Parse additional series from series_json if present
-    try {
-      const parsed = r.series_json ? JSON.parse(String(r.series_json)) : []
-      if (Array.isArray(parsed)) {
-        for (const it of parsed) {
-          if (it && typeof it === 'object' && it.name) {
-            series.push({ name: String(it.name), number: it.number != null ? Number(it.number) : null })
+  
+  try {
+    // Try using the qp function first
+    const rows: any[] = await db.select(qp(sql), params)
+    return rows.map((r: any) => {
+      const series: Array<{ name: string; number?: number | null }> = []
+      const formats: Array<{ format: string; obtained?: string | null }> = []
+      // Parse additional series from series_json if present
+      try {
+        const parsed = r.series_json ? JSON.parse(String(r.series_json)) : []
+        if (Array.isArray(parsed)) {
+          for (const it of parsed) {
+            if (it && typeof it === 'object' && it.name) {
+              series.push({ name: String(it.name), number: it.number != null ? Number(it.number) : null })
+            }
           }
         }
-      }
-    } catch {}
-    // Parse formats
-    try {
-      const parsedF = r.formats_json ? JSON.parse(String(r.formats_json)) : []
-      if (Array.isArray(parsedF)) {
-        for (const it of parsedF) {
-          if (it && typeof it === 'object' && it.format) {
-            formats.push({ format: String(it.format), obtained: it.obtained != null ? String(it.obtained) : null })
+      } catch {}
+      // Parse formats
+      try {
+        const parsedF = r.formats_json ? JSON.parse(String(r.formats_json)) : []
+        if (Array.isArray(parsedF)) {
+          for (const it of parsedF) {
+            if (it && typeof it === 'object' && it.format) {
+              formats.push({ format: String(it.format), obtained: it.obtained != null ? String(it.obtained) : null })
+            }
           }
         }
-      }
-    } catch {}
+      } catch {}
 
-    return {
-      id: r.id,
-      title: r.title,
-      author: r.author,
-      series_name: r.series_name,
-      series_number: r.series_number,
-      series,
-      obtained: r.obtained,
-      type: r.type,
-      status: r.status,
-      comments: r.comments ?? null,
-      formats,
-      next_up_priority: Boolean(r.next_up_priority),
-      tags: r.tag_names ? String(r.tag_names).split(',') : [],
-      reads_count: Number(r.reads_count || 0),
-      highlightsCount: Number(r.highlights_count || 0),
-      latest: r.latest ? JSON.parse(r.latest) : null,
-    } as Book & { tags: string[]; reads_count: number; latest?: Read | null }
-  })
+      // Ensure the primary series isn't duplicated inside the additional series array
+      const primaryName = String(r.series_name || '').trim()
+      const primaryNumber = r.series_number ?? null
+      const additionalSeries = series.filter((s) => !(s.name === primaryName && (s.number ?? null) === (primaryNumber ?? null)))
+
+      return {
+        id: r.id,
+        title: r.title,
+        author: r.author,
+        series_name: r.series_name,
+        series_number: r.series_number,
+        series: additionalSeries,
+        obtained: r.obtained,
+        type: r.type,
+        status: r.status,
+        comments: r.comments ?? null,
+        formats,
+        next_up_priority: Boolean(r.next_up_priority),
+        tags: r.tag_names ? String(r.tag_names).split(',') : [],
+        reads_count: Number(r.reads_count || 0),
+        highlightsCount: Number(r.highlights_count || 0),
+        latest: r.latest ? JSON.parse(r.latest) : null,
+      } as Book & { tags: string[]; reads_count: number; latest?: Read | null }
+    })
+  } catch (error) {
+    console.error('Complex query failed, trying simple fallback:', error)
+    
+    // Fallback to simple query without complex joins
+    try {
+      const simpleSql = `
+        SELECT b.*, 
+               '' as tag_names,
+               0 as reads_count,
+               0 as highlights_count,
+               NULL as latest
+        FROM books b
+        ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+        ORDER BY b.title COLLATE NOCASE ASC
+        ${opts?.limit ? `LIMIT ${opts.limit}` : ''}
+        ${opts?.offset ? `OFFSET ${opts.offset}` : ''}
+      `
+      
+      const rows: any[] = await db.select(qp(simpleSql), params)
+      return rows.map((r: any) => ({
+        id: r.id,
+        title: r.title,
+        author: r.author,
+        series_name: r.series_name,
+        series_number: r.series_number,
+        series: [],
+        obtained: r.obtained,
+        type: r.type,
+        status: r.status,
+        comments: r.comments ?? null,
+        formats: [],
+        next_up_priority: Boolean(r.next_up_priority),
+        tags: [],
+        reads_count: 0,
+        highlightsCount: 0,
+        latest: null,
+      } as Book & { tags: string[]; reads_count: number; latest?: Read | null }))
+    } catch (fallbackError) {
+      console.error('Fallback query also failed:', fallbackError)
+      throw new Error(`Failed to load books: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`)
+    }
+  }
+}
+
+// Get total count of books for pagination
+export async function countBooks(opts?: {
+  q?: string; status?: string; tag?: string | null; year?: number | null;
+}): Promise<number> {
+  const db = await getDb()
+  const where: string[] = []
+  const params: any[] = []
+
+  if (opts?.q) {
+    where.push(`(lower(b.title) LIKE ? OR lower(b.author) LIKE ? OR lower(b.series_name) LIKE ?)`)
+    const q = `%${opts.q.toLowerCase()}%`
+    params.push(q, q, q)
+  }
+  if (opts?.status && opts.status !== 'All') { where.push(`b.status = ?`); params.push(opts.status) }
+  if (opts?.tag && opts.tag !== 'All') { where.push(`t.name = ?`); params.push(opts.tag) }
+  if (opts?.year != null) {
+    where.push(`r2.end_date BETWEEN ? AND ?`)
+    params.push(`${opts.year}-01-01`, `${opts.year}-12-31`)
+  }
+
+  const sql = `
+  SELECT COUNT(DISTINCT b.id) as count
+  FROM books b
+  LEFT JOIN book_tags bt ON bt.book_id = b.id
+  LEFT JOIN tags t ON t.id = bt.tag_id
+  ${opts?.year != null ? 'LEFT JOIN reads r2 ON r2.book_id = b.id' : ''}
+  ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+  `
+  const result = await db.select(qp(sql), params) as any[]
+  return Number(result[0]?.count || 0)
 }
 
 // -------- Search helpers --------
@@ -148,14 +266,33 @@ export async function upsertBook(b: Partial<Book> & { id?: string }) {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        title=?, author=?, series_name=?, series_number=?, series_json=?, obtained=?, type=?, status=?, comments=?, formats_json=?, next_up_priority=?`)
-  const seriesJson = (b.series && Array.isArray(b.series) && b.series.length)
-    ? JSON.stringify(b.series.filter(s => s && s.name).map(s => ({ name: s.name, number: s.number ?? null })))
+  // Build combined series list: include primary + any additional, deduplicated
+  const seriesCombined: Array<{ name: string; number?: number | null }> = []
+  if (b.series_name) {
+    seriesCombined.push({ name: String(b.series_name), number: b.series_number ?? null })
+  }
+  if (b.series && Array.isArray(b.series) && b.series.length) {
+    for (const s of b.series) {
+      if (s && (s as any).name) {
+        seriesCombined.push({ name: String((s as any).name), number: (s as any).number ?? null })
+      }
+    }
+  }
+  const seenSeries = new Set<string>()
+  const dedupedSeries = seriesCombined.filter((s) => {
+    const key = `${s.name}::${s.number ?? ''}`
+    if (seenSeries.has(key)) return false
+    seenSeries.add(key)
+    return true
+  })
+  const seriesJson = dedupedSeries.length
+    ? JSON.stringify(dedupedSeries.map(s => ({ name: s.name, number: s.number ?? null })))
     : null
   const formatsJson = (b.formats && Array.isArray(b.formats) && b.formats.length)
     ? JSON.stringify(b.formats.filter(f => f && f.format).map(f => ({ format: f.format, obtained: f.obtained ?? null })))
     : null
-  const params = [id, b.title, b.author, b.series_name ?? null, b.series_number ?? null, seriesJson, b.obtained ?? null, b.type, b.status, b.comments ?? null, formatsJson, b.next_up_priority ? 1 : 0,
-     b.title, b.author, b.series_name ?? null, b.series_number ?? null, seriesJson, b.obtained ?? null, b.type, b.status, b.comments ?? null, formatsJson, b.next_up_priority ? 1 : 0]
+  const params = [id, b.title, b.author, b.series_name ?? null, b.series_number ?? null, seriesJson, b.obtained ?? null, b.type ?? 'Book', b.status ?? 'To Read', b.comments ?? null, formatsJson, b.next_up_priority ? 1 : 0,
+     b.title, b.author, b.series_name ?? null, b.series_number ?? null, seriesJson, b.obtained ?? null, b.type ?? 'Book', b.status ?? 'To Read', b.comments ?? null, formatsJson, b.next_up_priority ? 1 : 0]
   
   console.log('Executing SQL:', sql)
   console.log('With parameters:', params)
@@ -580,14 +717,60 @@ export async function getCurrentGoalStatus() {
 const csvEsc = (s: string) => '"' + String(s).split('"').join('""') + '"'
 export async function exportCsvFor(rows: any[]) {
   const headers = [
-    'title','author','seriesName','seriesNumber','obtained','type','status','comments','tags','latestStart','latestEnd','latestRating','latestReview','highlightsCount'
+    'title','author','seriesNames','seriesNumbers','obtained','type','status','comments','tags','latestStart','latestEnd','latestRating','latestReview','highlightsCount'
   ]
-  const body = rows.map((b: any) => [
-    b.title, b.author, b.series_name||'', b.series_number??'', b.obtained??'', b.type, b.status, b.comments||'',
-    (b.tags||[]).join(';'),
-    b.latest?.start_date||'', b.latest?.end_date||'', b.latest?.rating??'', b.latest?.review||'',
-    b.highlightsCount ?? 0
-  ].map((v: any) => csvEsc(String(v))))
+  const body = rows.map((b: any) => {
+    // Build full multi-series lists (include primary fields and any from series array)
+    const allSeries: Array<{ name: string; number?: number | null }> = []
+    if (b.series_name) {
+      allSeries.push({ name: String(b.series_name), number: b.series_number ?? null })
+    }
+    let seriesArray: Array<{ name: string; number?: number | null }> = []
+    if (Array.isArray(b.series)) {
+      seriesArray = b.series
+    } else if (b.series_json) {
+      try {
+        const parsed = JSON.parse(String(b.series_json))
+        if (Array.isArray(parsed)) {
+          seriesArray = parsed.filter((it: any) => it && typeof it === 'object' && it.name)
+            .map((it: any) => ({ name: String(it.name), number: it.number != null ? Number(it.number) : null }))
+        }
+      } catch {}
+    }
+    if (Array.isArray(seriesArray)) {
+      for (const s of seriesArray) {
+        if (s && s.name) {
+          allSeries.push({ name: String(s.name), number: s.number ?? null })
+        }
+      }
+    }
+    // Deduplicate by name+number
+    const seen = new Set<string>()
+    const deduped: Array<{ name: string; number?: number | null }> = []
+    for (const s of allSeries) {
+      const key = `${s.name}::${s.number ?? ''}`
+      if (!seen.has(key)) { seen.add(key); deduped.push(s) }
+    }
+    const seriesNames = deduped.map((s) => s.name).join(';')
+    const seriesNumbers = deduped.map((s) => (s.number == null ? '' : String(s.number))).join(';')
+
+    return [
+      b.title,
+      b.author,
+      seriesNames,
+      seriesNumbers,
+      b.obtained??'',
+      b.type,
+      b.status,
+      b.comments||'',
+      (b.tags||[]).join(';'),
+      b.latest?.start_date||'',
+      b.latest?.end_date||'',
+      b.latest?.rating??'',
+      b.latest?.review||'',
+      b.highlightsCount ?? 0
+    ].map((v: any) => csvEsc(String(v)))
+  })
   return [headers.join(','), ...body.map(r => r.join(','))].join('\n')
 }
 
@@ -595,6 +778,7 @@ export async function importCsv(text: string) {
   const lines = text.split(/\r?\n/).filter(Boolean)
   const headers = lines.shift()!.split(',')
   const idx = (n: string) => headers.indexOf(n)
+  const pref = getStoredDatePreference()
   for (const line of lines) {
     let cells: string[] = []; let cur = ''; let inQ = false
     for (let i=0;i<line.length;i++){
@@ -606,20 +790,69 @@ export async function importCsv(text: string) {
     cells.push(cur)
     const title = cells[idx('title')]||''; if (!title) continue
     const author = cells[idx('author')]||''
-    const seriesName = cells[idx('seriesName')]||null
-    const seriesNumber = cells[idx('seriesNumber')]? Number(cells[idx('seriesNumber')]) : null
+    const seriesName = idx('seriesName') >= 0 ? (cells[idx('seriesName')]||null) : null
+    const seriesNumber = idx('seriesNumber') >= 0 && cells[idx('seriesNumber')] ? Number(cells[idx('seriesNumber')]) : null
+    const hasSeriesNames = idx('seriesNames') >= 0
+    const hasSeriesNumbers = idx('seriesNumbers') >= 0
+    const seriesNamesRaw = hasSeriesNames ? (cells[idx('seriesNames')] || '') : ''
+    const seriesNumbersRaw = hasSeriesNumbers ? (cells[idx('seriesNumbers')] || '') : ''
     const obtained = cells[idx('obtained')]||null
     const type = (cells[idx('type')]||'Book')
     const status = (cells[idx('status')]||'To Read')
     const comments = (idx('comments')>=0 ? (cells[idx('comments')]||null) : null)
     const tags = (cells[idx('tags')]||'').split(';').filter(Boolean)
-    const latestStart = cells[idx('latestStart')]||null
-    const latestEnd = cells[idx('latestEnd')]||null
+    const latestStartRaw = cells[idx('latestStart')]||null
+    const latestEndRaw = cells[idx('latestEnd')]||null
+    const latestStart = parseToIsoDate(latestStartRaw, pref) || (latestStartRaw && latestStartRaw.includes('-') ? latestStartRaw : null)
+    const latestEnd = parseToIsoDate(latestEndRaw, pref) || (latestEndRaw && latestEndRaw.includes('-') ? latestEndRaw : null)
     const latestRating = cells[idx('latestRating')]? Number(cells[idx('latestRating')]) : null
     const latestReview = cells[idx('latestReview')]||null
 
+    // Build full series list combining primary and multi-series columns
+    const combinedSeries: Array<{ name: string; number?: number | null }> = []
+    if (seriesName) {
+      combinedSeries.push({ name: String(seriesName), number: seriesNumber ?? null })
+    }
+    if (seriesNamesRaw) {
+      const names = seriesNamesRaw.split(';').map(s => s.trim()).filter(Boolean)
+      const numsRaw = seriesNumbersRaw.split(';').map(s => s.trim())
+      for (let i = 0; i < names.length; i++) {
+        const n = names[i]
+        const numToken = i < numsRaw.length ? numsRaw[i] : ''
+        const numParsed = numToken === '' ? null : (isNaN(Number(numToken)) ? null : Number(numToken))
+        combinedSeries.push({ name: n, number: numParsed })
+      }
+    }
+    // Deduplicate while preserving order
+    const seen = new Set<string>()
+    const dedupedSeries: Array<{ name: string; number?: number | null }> = []
+    for (const s of combinedSeries) {
+      const key = `${s.name}::${s.number ?? ''}`
+      if (!seen.has(key)) { seen.add(key); dedupedSeries.push({ name: s.name, number: s.number ?? null }) }
+    }
+    // Determine primary from explicit primary fields or first deduped entry
+    const primary = seriesName ? { name: seriesName, number: seriesNumber ?? null } : (dedupedSeries[0] || null)
+    const finalSeriesArray = dedupedSeries.length > 0
+      ? (
+        primary
+          ? [primary, ...dedupedSeries.filter(s => !(s.name === primary.name && (s.number ?? null) === (primary.number ?? null)))]
+          : dedupedSeries
+      )
+      : []
+
     const id = Math.random().toString(36).slice(2,10)
-    await upsertBook({ id, title, author, series_name: seriesName||undefined, series_number: seriesNumber||undefined, obtained: obtained as any, type: type as any, status: status as any, comments: comments || undefined })
+    await upsertBook({
+      id,
+      title,
+      author,
+      series_name: (primary?.name ?? null) || undefined,
+      series_number: (primary?.number ?? null) as any,
+      series: finalSeriesArray.length ? finalSeriesArray : undefined,
+      obtained: obtained as any,
+      type: type as any,
+      status: status as any,
+      comments: comments || undefined
+    })
     // tags
     await setTagsForBook(id, tags)
     // read
@@ -688,6 +921,109 @@ export async function exportHighlightsCsv(): Promise<string> {
   return [headers.join(','), ...body].join('\n')
 }
 
+export async function exportReadsCsv(): Promise<string> {
+  const db = await getDb()
+  const rows: any[] = await db.select(`
+    SELECT 
+      r.id,
+      r.book_id,
+      b.title AS title,
+      b.author AS author,
+      r.start_date,
+      r.end_date,
+      r.rating,
+      r.review,
+      r.format,
+      r.current_page,
+      r.total_pages,
+      r.progress_percentage
+    FROM reads r
+    JOIN books b ON b.id = r.book_id
+    ORDER BY COALESCE(r.end_date, r.start_date) DESC, r.rowid DESC
+  `)
+  const headers = ['id','book_id','title','author','start_date','end_date','rating','review','format','current_page','total_pages','progress_percentage']
+  const body = rows.map((r: any) => [
+    r.id,
+    r.book_id,
+    r.title,
+    r.author,
+    r.start_date ?? '',
+    r.end_date ?? '',
+    r.rating ?? '',
+    r.review ?? '',
+    r.format ?? '',
+    r.current_page ?? '',
+    r.total_pages ?? '',
+    r.progress_percentage ?? ''
+  ].map((v: any) => csvEsc(String(v))).join(','))
+  return [headers.join(','), ...body].join('\n')
+}
+
+export async function importReadsCsv(text: string) {
+  const db = await getDb()
+  const lines = text.split(/\r?\n/).filter(Boolean)
+  if (lines.length === 0) return
+  const headers = lines.shift()!.split(',')
+  const idx = (n: string) => headers.indexOf(n)
+  const has = (n: string) => idx(n) >= 0
+  const pref = getStoredDatePreference()
+  for (const line of lines) {
+    let cells: string[] = []; let cur = ''; let inQ = false
+    for (let i=0;i<line.length;i++){
+      const ch = line[i]
+      if (ch==='"') { if (inQ && line[i+1]==='"'){ cur+='"'; i++; } else inQ = !inQ }
+      else if (ch===',' && !inQ) { cells.push(cur); cur=''; }
+      else cur+=ch
+    }
+    cells.push(cur)
+
+    // Identify read and book
+    const readId = has('id') && cells[idx('id')] ? cells[idx('id')] : Math.random().toString(36).slice(2,10)
+    const providedBookId = has('book_id') ? (cells[idx('book_id')] || '') : ''
+    const title = has('title') ? (cells[idx('title')] || '') : ''
+    const author = has('author') ? (cells[idx('author')] || '') : ''
+
+    let bookId = providedBookId
+    if (!bookId) {
+      if (!title) continue
+      // try to find by title+author (case-insensitive)
+      const existing: any[] = await db.select(qp(`SELECT id FROM books WHERE lower(title) = ? AND lower(author) = ? LIMIT 1`), [String(title).toLowerCase(), String(author).toLowerCase()])
+      if (existing.length > 0) {
+        bookId = existing[0].id
+      } else {
+        // create minimal book entry
+        bookId = Math.random().toString(36).slice(2,10)
+        await upsertBook({ id: bookId, title, author, type: 'Book', status: 'To Read' })
+      }
+    }
+
+    // Parse fields
+    const startRaw = has('start_date') ? (cells[idx('start_date')] || null) : null
+    const endRaw = has('end_date') ? (cells[idx('end_date')] || null) : null
+    const start_date = parseToIsoDate(startRaw, pref) || (startRaw && startRaw.includes('-') ? startRaw : null)
+    const end_date = parseToIsoDate(endRaw, pref) || (endRaw && endRaw.includes('-') ? endRaw : null)
+    const rating = has('rating') && cells[idx('rating')] ? Number(cells[idx('rating')]) : null
+    const review = has('review') ? (cells[idx('review')] || null) : null
+    const format = has('format') ? (cells[idx('format')] || null) : null
+    const current_page = has('current_page') && cells[idx('current_page')] ? Number(cells[idx('current_page')]) : null
+    const total_pages = has('total_pages') && cells[idx('total_pages')] ? Number(cells[idx('total_pages')]) : null
+    const progress_percentage = has('progress_percentage') && cells[idx('progress_percentage')] ? Number(cells[idx('progress_percentage')]) : null
+
+    await upsertRead({
+      id: readId,
+      book_id: bookId,
+      start_date: start_date || undefined,
+      end_date: end_date || undefined,
+      rating: rating ?? undefined,
+      review: review ?? undefined,
+      format: format ?? undefined,
+      current_page: current_page ?? undefined,
+      total_pages: total_pages ?? undefined,
+      progress_percentage: progress_percentage ?? undefined
+    })
+  }
+}
+
 export async function databasePath(): Promise<string> {
   return getDatabasePath()
 }
@@ -725,12 +1061,152 @@ export async function importHighlightsCsv(text: string) {
       bookId = existing[0].id
     } else {
       bookId = uid()
-      await upsertBook({ id: bookId, title, author, type: 'Book' as any, status: 'To Read' as any })
+      await upsertBook({ id: bookId, title, author, type: 'Book', status: 'To Read' })
     }
     const hid = has('id') && cells[idx('id')] ? cells[idx('id')] : uid()
     await db.execute(
       qp(`INSERT INTO highlights (id, book_id, text, created_at, commentary) VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), ?)`),
       [hid, bookId, htext, createdAt, commentary]
     )
+  }
+}
+
+// Smart list counting functions
+export async function countNextUpBooks(): Promise<number> {
+  const db = await getDb()
+  const sql = `SELECT COUNT(*) as count FROM books WHERE status = 'To Read'`
+  const result = await db.select(sql) as any[]
+  return Number(result[0]?.count || 0)
+}
+
+export async function countReReads(): Promise<number> {
+  const db = await getDb()
+  const sql = `
+    SELECT COUNT(*) as count
+    FROM (
+      SELECT b.id
+      FROM books b
+      INNER JOIN reads r ON r.book_id = b.id
+      GROUP BY b.id
+      HAVING COUNT(r.id) > 1
+    )
+  `
+  const result = await db.select(sql) as any[]
+  return Number(result[0]?.count || 0)
+}
+
+export async function countFinishedThisYear(): Promise<number> {
+  const db = await getDb()
+  const currentYear = new Date().getFullYear()
+  const sql = `
+    SELECT COUNT(DISTINCT b.id) as count
+    FROM books b
+    INNER JOIN reads r ON r.book_id = b.id
+    WHERE r.end_date BETWEEN ? AND ?
+  `
+  const result = await db.select(sql, [`${currentYear}-01-01`, `${currentYear}-12-31`]) as any[]
+  return Number(result[0]?.count || 0)
+}
+
+// Add a simple test function to check database connectivity
+export async function testDatabaseConnection(): Promise<{ success: boolean; message: string; bookCount?: number }> {
+  try {
+    console.log('🔍 Testing database connection...')
+    const db = await getDb()
+    console.log('✅ Database instance obtained')
+    
+    // Test basic connection with a simple query
+    console.log('🔍 Running basic connection test...')
+    const testResult = await db.select('SELECT 1 as test') as any[]
+    console.log('✅ Basic query result:', testResult)
+    
+    if (!testResult || testResult.length === 0) {
+      return { success: false, message: 'Database connection failed - no test result' }
+    }
+    
+    // Check if books table exists
+    console.log('🔍 Checking if books table exists...')
+    try {
+      const tableCheck = await db.select("SELECT name FROM sqlite_master WHERE type='table' AND name='books'") as any[]
+      console.log('✅ Table check result:', tableCheck)
+      
+      if (!tableCheck || tableCheck.length === 0) {
+        return { success: false, message: 'Books table does not exist - database schema not initialized' }
+      }
+    } catch (tableError) {
+      console.error('❌ Table check failed:', tableError)
+      return { success: false, message: `Failed to check table schema: ${tableError instanceof Error ? tableError.message : 'Unknown error'}` }
+    }
+    
+    // Check if books table has data
+    console.log('🔍 Counting books in database...')
+    const bookCountResult = await db.select('SELECT COUNT(*) as count FROM books') as any[]
+    console.log('✅ Book count result:', bookCountResult)
+    
+    const bookCount = bookCountResult?.[0]?.count || 0
+    
+    return { 
+      success: true, 
+      message: `Database connection successful. Found ${bookCount} books.`,
+      bookCount: Number(bookCount)
+    }
+  } catch (error) {
+    console.error('💥 Database connection test failed:', error)
+    return { 
+      success: false, 
+      message: `Database connection failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+    }
+  }
+}
+
+// Add a function to populate sample data if database is empty
+export async function populateSampleDataIfEmpty(): Promise<void> {
+  try {
+    const db = await getDb()
+    
+    // Check if books table is empty
+    const bookCountResult = await db.select('SELECT COUNT(*) as count FROM books') as any[]
+    const bookCount = Number(bookCountResult?.[0]?.count || 0)
+    
+    if (bookCount === 0) {
+      console.log('Database is empty, populating with sample data...')
+      
+      // Import sample data
+      const { samples } = await import('@/data/sampleData')
+      
+      for (const sample of samples) {
+        const bookId = uid()
+        await db.execute(`
+          INSERT INTO books (id, title, author, series_name, series_number, obtained, type, status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, [bookId, sample.title, sample.author, sample.series_name || null, sample.series_number || null, sample.obtained || null, sample.type || 'Book', sample.status || 'To Read'])
+        
+        // Add tags if they exist
+        if (sample.tags && sample.tags.length > 0) {
+          for (const tagName of sample.tags) {
+            // Insert tag if it doesn't exist
+            let tagId: number
+            try {
+              const tagResult = await db.select('SELECT id FROM tags WHERE name = ?', [tagName]) as any[]
+              if (tagResult && tagResult.length > 0) {
+                tagId = tagResult[0].id
+              } else {
+                const insertResult = await db.execute('INSERT INTO tags (name) VALUES (?)', [tagName])
+                tagId = insertResult.lastInsertId as number
+              }
+              
+              // Link tag to book
+              await db.execute('INSERT INTO book_tags (book_id, tag_id) VALUES (?, ?)', [bookId, tagId])
+            } catch (tagError) {
+              console.warn(`Failed to add tag ${tagName} for book ${sample.title}:`, tagError)
+            }
+          }
+        }
+      }
+      
+      console.log(`Successfully added ${samples.length} sample books to the database`)
+    }
+  } catch (error) {
+    console.error('Failed to populate sample data:', error)
   }
 }

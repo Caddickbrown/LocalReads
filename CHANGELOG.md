@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- New vibrant themes in Settings → Color Themes:
+  - Sunset (warm orange/rose gradient)
+  - Neon (electric cyan/purple glow)
+  - Candy (playful pinks with gold accent)
+  - Mint (fresh teal/green blend)
+  - All themes include light and dark variants, dashboard tile gradients, button styles, table/inputs, and empty-state styling
+
 ## Upcoming/Potential Additions
 
 - Auto-update experience

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useCallback, useContext, useEffect } from 'react'
 
 // Input component with consistent styling
 export const Input: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { className?: string }> = ({ 
@@ -370,6 +370,146 @@ export const ProgressBar: React.FC<{
           <span>{clampedValue}% complete</span>
         </div>
       )}
+    </div>
+  )
+}
+
+// Toast notification system
+interface Toast {
+  id: string
+  type: 'success' | 'error' | 'info' | 'warning'
+  title: string
+  message?: string
+  duration?: number
+}
+
+interface ToastContextType {
+  toasts: Toast[]
+  addToast: (toast: Omit<Toast, 'id'>) => void
+  removeToast: (id: string) => void
+}
+
+const ToastContext = React.createContext<ToastContextType | null>(null)
+
+export const ToastProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
+  const [toasts, setToasts] = useState<Toast[]>([])
+
+  const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
+    const id = Math.random().toString(36).slice(2)
+    const newToast: Toast = { ...toast, id, duration: toast.duration ?? 5000 }
+    
+    setToasts(prev => [...prev, newToast])
+    
+    // Auto-remove after duration
+    if (newToast.duration !== Infinity) {
+      setTimeout(() => {
+        removeToast(id)
+      }, newToast.duration)
+    }
+  }, [])
+
+  const removeToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id))
+  }, [])
+
+  return (
+    <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
+      {children}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+    </ToastContext.Provider>
+  )
+}
+
+export const useToast = () => {
+  const context = useContext(ToastContext)
+  if (!context) {
+    throw new Error('useToast must be used within a ToastProvider')
+  }
+  return context
+}
+
+const ToastContainer: React.FC<{ toasts: Toast[]; removeToast: (id: string) => void }> = ({ toasts, removeToast }) => {
+  return (
+    <div className="fixed top-4 right-4 z-[9999] space-y-2 pointer-events-none">
+      {toasts.map((toast) => (
+        <Toast key={toast.id} toast={toast} onRemove={removeToast} />
+      ))}
+    </div>
+  )
+}
+
+const Toast: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({ toast, onRemove }) => {
+  const [isVisible, setIsVisible] = useState(false)
+  const [isLeaving, setIsLeaving] = useState(false)
+
+  useEffect(() => {
+    // Animate in
+    const timer = setTimeout(() => setIsVisible(true), 10)
+    return () => clearTimeout(timer)
+  }, [])
+
+  const handleRemove = () => {
+    setIsLeaving(true)
+    setTimeout(() => onRemove(toast.id), 200)
+  }
+
+  const getToastStyles = () => {
+    const baseClasses = 'pointer-events-auto transform transition-all duration-200 ease-out shadow-lg rounded-xl border p-4 max-w-sm'
+    
+    switch (toast.type) {
+      case 'success':
+        return `${baseClasses} bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700 text-green-800 dark:text-green-200`
+      case 'error':
+        return `${baseClasses} bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200`
+      case 'warning':
+        return `${baseClasses} bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200`
+      case 'info':
+        return `${baseClasses} bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-800 dark:text-blue-200`
+      default:
+        return `${baseClasses} bg-zinc-50 dark:bg-zinc-900/20 border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200`
+    }
+  }
+
+  const getIcon = () => {
+    switch (toast.type) {
+      case 'success':
+        return '✓'
+      case 'error':
+        return '✕'
+      case 'warning':
+        return '⚠'
+      case 'info':
+        return 'ℹ'
+      default:
+        return '•'
+    }
+  }
+
+  return (
+    <div
+      className={`${getToastStyles()} ${
+        isVisible && !isLeaving 
+          ? 'translate-x-0 opacity-100 scale-100' 
+          : 'translate-x-full opacity-0 scale-95'
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-sm font-bold">
+          {getIcon()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-medium">{toast.title}</div>
+          {toast.message && (
+            <div className="text-sm opacity-90 mt-1">{toast.message}</div>
+          )}
+        </div>
+        <button
+          onClick={handleRemove}
+          className="flex-shrink-0 w-4 h-4 opacity-60 hover:opacity-100 transition-opacity"
+        >
+          ✕
+        </button>
+      </div>
     </div>
   )
 }

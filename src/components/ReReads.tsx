@@ -145,7 +145,7 @@ export default function ReReads({ onBack }: { onBack: () => void }) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-semibold flex items-center gap-2">
+            <h2 className="text-heading-2 flex items-center gap-2">
               <RefreshCw className="w-5 h-5 text-green-600 dark:text-green-400"/> 
               Re-reads ({sortedBooks.length})
             </h2>
@@ -230,7 +230,7 @@ export default function ReReads({ onBack }: { onBack: () => void }) {
                   {/* Book Header */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1 min-w-0 mr-4">
-                      <h3 className="font-semibold text-lg text-zinc-900 dark:text-zinc-100 mb-1">
+                      <h3 className="text-heading-3 text-zinc-900 dark:text-zinc-100 mb-1">
                         {book.title}
                       </h3>
                       <p className="text-zinc-600 dark:text-zinc-400 mb-1">

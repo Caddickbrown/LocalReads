@@ -57,6 +57,19 @@ CREATE TABLE IF NOT EXISTS reading_goals (
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Performance indexes for large datasets
+CREATE INDEX IF NOT EXISTS idx_books_title ON books(title COLLATE NOCASE);
+CREATE INDEX IF NOT EXISTS idx_books_author ON books(author COLLATE NOCASE);
+CREATE INDEX IF NOT EXISTS idx_books_status ON books(status);
+CREATE INDEX IF NOT EXISTS idx_books_type ON books(type);
+CREATE INDEX IF NOT EXISTS idx_books_series_name ON books(series_name COLLATE NOCASE);
+CREATE INDEX IF NOT EXISTS idx_reads_book_id ON reads(book_id);
+CREATE INDEX IF NOT EXISTS idx_reads_end_date ON reads(end_date);
+CREATE INDEX IF NOT EXISTS idx_reads_start_date ON reads(start_date);
+CREATE INDEX IF NOT EXISTS idx_book_tags_book_id ON book_tags(book_id);
+CREATE INDEX IF NOT EXISTS idx_book_tags_tag_id ON book_tags(tag_id);
+CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name COLLATE NOCASE);
+
 -- Helpful views
 CREATE VIEW IF NOT EXISTS v_finished_year AS
 SELECT r.book_id, strftime('%Y', r.end_date) AS year

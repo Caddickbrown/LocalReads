@@ -123,7 +123,7 @@ export default function Highlights({ onBack }:{ onBack:()=>void }){
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold flex items-center gap-2"><Tags className="w-5 h-5 text-indigo-600 dark:text-indigo-400"/> Gems ({filteredRows.length}{filteredRows.length !== rows.length ? ` of ${rows.length}` : ''})</h2>
+          <h2 className="text-heading-2 flex items-center gap-2"><Tags className="w-5 h-5 text-indigo-600 dark:text-indigo-400"/> Gems ({filteredRows.length}{filteredRows.length !== rows.length ? ` of ${rows.length}` : ''})</h2>
           <div className="flex items-center gap-2">
             <Button onClick={async ()=>{
               try {

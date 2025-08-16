@@ -50,7 +50,7 @@ export default function Authors({ onBack, onSelectAuthor }: { onBack: () => void
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <User className="w-5 h-5" />
-                <h2 className="font-semibold">Authors</h2>
+                <h2 className="text-heading-2">Authors</h2>
                 {authors.length > 0 && (
                   <Badge variant="secondary" size="sm">{authors.length}</Badge>
                 )}

@@ -53,7 +53,18 @@ export default function EditDialog({ book, onClose, onSave }: EditDialogProps) {
 
   useEffect(() => {
     if (book) {
-      setFormData(book)
+      // Remove primary series from the additional series list to avoid duplication in the UI
+      const primaryName = String(book.series_name || '').trim().toLowerCase()
+      const primaryNumber = book.series_number ?? null
+      const cleanedSeries = Array.isArray(book.series)
+        ? book.series.filter((s: any) => {
+            const name = String(s?.name || '').trim().toLowerCase()
+            const num = s?.number ?? null
+            return !(name === primaryName && (num ?? null) === (primaryNumber ?? null))
+          })
+        : []
+
+      setFormData({ ...book, series: cleanedSeries })
       // Initialize formats list from formData or book
       try {
         const initial: Array<{ format: any; obtained?: any }> = (book as any).formats || []

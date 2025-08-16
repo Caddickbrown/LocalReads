@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-4">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-2xl font-bold mb-4">Responsive Breakpoint Test</h1>
+        
+        <div class="mb-4 p-4 bg-blue-100 rounded">
+            <p class="text-sm">Current window width: <span id="width" class="font-bold"></span>px</p>
+            <p class="text-sm">Breakpoints: sm (640px), md (768px), lg (1024px), xl (1280px)</p>
+        </div>
+
+        <!-- Mobile Layout (hidden on md and up) -->
+        <div class="block md:hidden p-4 bg-green-200 rounded mb-4">
+            <h2 class="font-bold text-green-800">Mobile Layout (md:hidden)</h2>
+            <p>This should be visible on small screens and hidden on medium screens and larger.</p>
+        </div>
+
+        <!-- Desktop Layout (hidden on small screens, visible on md and up) -->
+        <div class="hidden md:block p-4 bg-red-200 rounded mb-4">
+            <h2 class="font-bold text-red-800">Desktop Layout (hidden md:block)</h2>
+            <p>This should be hidden on small screens and visible on medium screens and larger.</p>
+        </div>
+
+        <!-- Always visible -->
+        <div class="p-4 bg-gray-200 rounded">
+            <h2 class="font-bold">Always Visible</h2>
+            <p>This should always be visible regardless of screen size.</p>
+        </div>
+    </div>
+
+    <script>
+        function updateWidth() {
+            document.getElementById('width').textContent = window.innerWidth;
+        }
+        
+        window.addEventListener('resize', updateWidth);
+        updateWidth();
+    </script>
+</body>
+</html>

@@ -3,6 +3,7 @@ export const BOOK_TYPES = [
   "Audiobook",
   "Ebook",
   "Comic",
+  "Manga",
   "Graphic Novel",
   "Art/Photography Book"
 ] as const;

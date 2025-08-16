@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
-export type ExtraTheme = 'sepia' | 'forest' | 'ocean' | 'lavender'
+export type ExtraTheme = 'sepia' | 'forest' | 'ocean' | 'lavender' | 'sunset' | 'neon' | 'candy' | 'mint'
 
 export function useTheme() {
   const getSavedMode = () => (
