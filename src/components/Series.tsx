@@ -105,3 +105,4 @@ export default function Series({ onBack, onSelectSeries }: { onBack: () => void;
     </div>
   )
 }
+
