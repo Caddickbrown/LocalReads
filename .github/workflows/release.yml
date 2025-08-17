@@ -101,6 +101,10 @@ jobs:
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli@^2.0.0
 
+      # Build frontend explicitly to ensure dist directory exists
+      - name: Build frontend
+        run: npm run build
+
       # Build the application
       - name: Build Tauri application
         run: tauri build ${{ matrix.args }}
@@ -119,6 +123,8 @@ jobs:
             ls -la $BUNDLE_DIR/
           else
             echo "❌ Dist or bundle directory not found"
+            echo "Dist exists: $(if [ -d "$DIST_DIR" ]; then echo "YES"; else echo "NO"; fi)"
+            echo "Bundle exists: $(if [ -d "$BUNDLE_DIR" ]; then echo "YES"; else echo "NO"; fi)"
             exit 1
           fi
 
@@ -131,11 +137,14 @@ jobs:
           BUNDLE_DIR="src-tauri/target/${{ matrix.target }}/release/bundle/appimage"
           
           if [ -d "$DIST_DIR" ] && [ -d "$BUNDLE_DIR" ]; then
+            echo "Copying from $DIST_DIR to $BUNDLE_DIR"
             cp -r $DIST_DIR/* $BUNDLE_DIR/
             echo "✅ Frontend assets copied successfully!"
             ls -la $BUNDLE_DIR/
           else
             echo "❌ Dist or bundle directory not found"
+            echo "Dist exists: $(if [ -d "$DIST_DIR" ]; then echo "YES"; else echo "NO"; fi)"
+            echo "Bundle exists: $(if [ -d "$BUNDLE_DIR" ]; then echo "YES"; else echo "NO"; fi)"
             exit 1
           fi
 
@@ -144,17 +153,20 @@ jobs:
         if: matrix.platform == 'windows-latest'
         run: |
           echo "Copying frontend assets to app bundle..."
-          DIST_DIR="dist"
-          BUNDLE_DIR="src-tauri/target/${{ matrix.target }}/release/bundle/nsis"
+          $DIST_DIR = "dist"
+          $BUNDLE_DIR = "src-tauri/target/${{ matrix.target }}/release/bundle/nsis"
           
-          if [ -d "$DIST_DIR" ] && [ -d "$BUNDLE_DIR" ]; then
-            Copy-Item -Path "$DIST_DIR\*" -Destination "$BUNDLE_DIR" -Recurse -Force
+          if ((Test-Path $DIST_DIR) -and (Test-Path $BUNDLE_DIR)) {
+            echo "Copying from $DIST_DIR to $BUNDLE_DIR"
+            Copy-Item -Path "$DIST_DIR\*" -Destination $BUNDLE_DIR -Recurse -Force
             echo "✅ Frontend assets copied successfully!"
             Get-ChildItem $BUNDLE_DIR
-          else
+          } else {
             echo "❌ Dist or bundle directory not found"
+            echo "Dist exists: $(if (Test-Path $DIST_DIR) { 'YES' } else { 'NO' })"
+            echo "Bundle exists: $(if (Test-Path $BUNDLE_DIR) { 'YES' } else { 'NO' })"
             exit 1
-          fi
+          }
 
       # List build artifacts for debugging
       - name: List build artifacts
