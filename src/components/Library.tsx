@@ -164,8 +164,8 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
   // Random shuffle state
   const [randomSeed, setRandomSeed] = useState<number>(0)
   
-
-
+  // Add state to track which books are in delete confirmation mode
+  const [deleteConfirmations, setDeleteConfirmations] = useState<Set<string>>(new Set())
 
   // Column visibility configuration
 
@@ -860,19 +860,56 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
   }
 
   const handleDeleteBook = async (bookId: string) => {
-    if (confirm('Are you sure you want to delete this book? This action cannot be undone.')) {
-      try {
-        await deleteBook(bookId)
-        // Trigger refresh
-        window.dispatchEvent(new CustomEvent('refresh-library'))
-      } catch (error) {
-        console.error('Error deleting book:', error)
-                 addToast({
-           title: 'Error deleting book',
-           message: 'Error deleting book. Please try again.',
-           type: 'error',
-         })
-      }
+    // Double confirmation to prevent accidental deletions
+    const firstConfirm = confirm('Are you sure you want to delete this book? This action cannot be undone.')
+    if (!firstConfirm) return
+    
+    const secondConfirm = confirm('This will permanently remove the book and all its reading history. Click OK to confirm deletion.')
+    if (!secondConfirm) return
+    
+    try {
+      // Add a small delay to ensure the user really wants to delete
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      await deleteBook(bookId)
+      // Trigger refresh
+      window.dispatchEvent(new CustomEvent('refresh-library'))
+      
+      addToast({
+        title: 'Book deleted',
+        message: 'The book has been successfully deleted.',
+        type: 'success',
+      })
+    } catch (error) {
+      console.error('Error deleting book:', error)
+      addToast({
+        title: 'Error deleting book',
+        message: 'Error deleting book. Please try again.',
+        type: 'error',
+      })
+    }
+  }
+
+  const handleDeleteClick = (bookId: string) => {
+    if (deleteConfirmations.has(bookId)) {
+      // Second click - proceed with deletion
+      handleDeleteBook(bookId)
+      setDeleteConfirmations(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(bookId)
+        return newSet
+      })
+    } else {
+      // First click - show confirmation state
+      setDeleteConfirmations(prev => new Set(prev).add(bookId))
+      // Auto-clear confirmation after 5 seconds
+      setTimeout(() => {
+        setDeleteConfirmations(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(bookId)
+          return newSet
+        })
+      }, 5000)
     }
   }
 
@@ -1271,12 +1308,19 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
                         {/* Actions */}
                         <div className="flex gap-2 pt-3 border-t border-zinc-200 dark:border-zinc-700">
                           <Button
-                            onClick={() => handleDeleteBook(book.id)}
+                            onClick={() => handleDeleteClick(book.id)}
                             size="sm"
-                            variant="danger"
-                            className="min-h-[44px]"
+                            variant={deleteConfirmations.has(book.id) ? "danger" : "danger"}
+                            className={`min-h-[44px] ${deleteConfirmations.has(book.id) ? 'animate-pulse' : ''}`}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            {deleteConfirmations.has(book.id) ? (
+                              <>
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Confirm Delete
+                              </>
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
                           </Button>
                         </div>
                       </div>
@@ -1475,7 +1519,7 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
                           {columnVisibility.series && (
                             <td className="py-3 px-2">
                               {(book.series_name || (book.series && book.series.length > 0)) && (
-                                <div className="text-sm" title={[book.series_name && (book.series_number != null ? `${book.series_name} #${book.series_number}` : book.series_name), ...(book.series||[]).map(s => s.number != null ? `${s.name} #${s.number}` : s.name)].filter(Boolean).join(' • ')}>
+                                <div className="text-sm" title={[book.series_name && (book.series_number != null ? `${book.series_name} #${book.series_number}` : book.series_name), ...(book.series||[]).map(s => s.number != null && s.number > 0 ? `${s.name} #${s.number}` : s.name)].filter(Boolean).join(' • ')}>
                                   {book.series_name || (book.series && book.series[0]?.name)}
                                                                   {(() => {
                                   const n = (book.series_number != null ? book.series_number : (book.series && book.series[0]?.number))
@@ -1595,12 +1639,23 @@ export default function Library({ onOpenHighlights, onOpenDashboard, refreshSign
                               <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
                                 <Button
                                   size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleDeleteBook(book.id)}
-                                  className="p-1 hover:scale-110 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 hover:shadow-md"
-                                  title="Delete book"
+                                  variant={deleteConfirmations.has(book.id) ? "danger" : "ghost"}
+                                  onClick={() => handleDeleteClick(book.id)}
+                                  className={`p-1 hover:scale-110 transition-all duration-200 hover:shadow-md ${
+                                    deleteConfirmations.has(book.id) 
+                                      ? 'bg-red-600 text-white animate-pulse' 
+                                      : 'hover:bg-red-50 dark:hover:bg-red-900/20'
+                                  }`}
+                                  title={deleteConfirmations.has(book.id) ? "Click again to confirm deletion" : "Delete book"}
                                 >
-                                  <Trash2 className="w-3 h-3 text-red-600 hover:text-red-700 transition-colors" />
+                                  {deleteConfirmations.has(book.id) ? (
+                                    <>
+                                      <Trash2 className="w-3 h-3 mr-1" />
+                                      <span className="text-xs">Confirm</span>
+                                    </>
+                                  ) : (
+                                    <Trash2 className="w-3 h-3 text-red-600 hover:text-red-700 transition-colors" />
+                                  )}
                                 </Button>
                               </div>
                             </td>

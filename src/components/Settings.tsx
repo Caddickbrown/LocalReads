@@ -1,9 +1,23 @@
 import React, { useState } from 'react'
 import { Settings as SettingsIcon, RefreshCw, Download, Upload, FileDown, X, ListChecks } from 'lucide-react'
-import { Card, CardHeader, CardContent, Button, Input, Textarea, ModalBackdrop } from './ui'
+import { Card, CardHeader, CardContent, Button, Input, Textarea, ModalBackdrop, useToast } from './ui'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { save, open } from '@tauri-apps/plugin-dialog'
 import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs'
+
+// App information constants
+const APP_INFO = {
+  name: 'LocalReads',
+  version: '0.6.11',
+  identifier: 'app.localreads',
+  buildType: 'Tauri Desktop App',
+  database: 'SQLite',
+  framework: 'React + TypeScript',
+  uiLibrary: 'Tailwind CSS',
+  description: 'A personal library management application for tracking your reading journey',
+  repository: 'https://github.com/Caddickbrown/LocalReads',
+  buildTime: new Date().toISOString().split('T')[0] // Current date as build date
+}
 
 // Dynamic import helper for clipboard functionality
 const copyToClipboard = async (text: string): Promise<void> => {
@@ -57,14 +71,36 @@ export default function Settings({
   const [importing, setImporting] = useState(false)
   const [dbPath, setDbPath] = useState<string>('localreads.sqlite')
   const [datePref, setDatePref] = useState<StoredDatePreference>(getStoredDatePreference())
+  const { addToast } = useToast()
 
   const handleCheckUpdate = async () => {
     setIsChecking(true)
     try {
       const update = await autoUpdater.checkForUpdates()
-      setUpdateInfo(update)
+      if (update) {
+        setUpdateInfo(update)
+        addToast({
+          title: 'Update Available',
+          message: `Version ${update.version} is available for download`,
+          type: 'info',
+          duration: 5000
+        })
+      } else {
+        addToast({
+          title: 'Up to Date',
+          message: 'You have the latest version installed',
+          type: 'success',
+          duration: 3000
+        })
+      }
     } catch (error) {
       console.error('Update check failed:', error)
+      addToast({
+        title: 'Update Check Failed',
+        message: 'Failed to check for updates. Please try again.',
+        type: 'error',
+        duration: 5000
+      })
     } finally {
       setIsChecking(false)
     }
@@ -72,9 +108,31 @@ export default function Settings({
 
   const handleInstallUpdate = async () => {
     try {
+      addToast({
+        title: 'Installing Update',
+        message: 'Downloading and installing the update...',
+        type: 'info',
+        duration: Infinity
+      })
+      
       await autoUpdater.installUpdate()
+      
+      // Note: The app will restart after installation, so this toast won't be visible
+      // But we'll show it briefly in case there's a delay
+      addToast({
+        title: 'Update Installed',
+        message: 'The app will restart with the new version',
+        type: 'success',
+        duration: 2000
+      })
     } catch (error) {
       console.error('Update installation failed:', error)
+      addToast({
+        title: 'Installation Failed',
+        message: 'Failed to install the update. Please try again.',
+        type: 'error',
+        duration: 5000
+      })
     }
   }
 
@@ -784,6 +842,127 @@ export default function Settings({
               >
                 <ListChecks className="w-3 h-3"/> Find Non-Compliant
               </Button>
+            </div>
+          </div>
+
+          {/* App Information */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">ℹ️</span>
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-white">App Information</h3>
+            </div>
+            <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">Version details and application information</div>
+            
+            <div className="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-4 space-y-3">
+              <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-sm text-blue-800 dark:text-blue-200">{APP_INFO.description}</p>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">App Name</span>
+                <span className="text-sm text-zinc-900 dark:text-zinc-100">{APP_INFO.name}</span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">App ID</span>
+                <span className="text-sm text-zinc-900 dark:text-zinc-100 font-mono">{APP_INFO.identifier}</span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Version</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-zinc-900 dark:text-zinc-100">{APP_INFO.version}</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={async () => {
+                      try {
+                        const versionInfo = `${APP_INFO.name} v${APP_INFO.version}\nApp ID: ${APP_INFO.identifier}\nBuild: ${APP_INFO.buildType}\nDatabase: ${APP_INFO.database}\nFramework: ${APP_INFO.framework}\nUI: ${APP_INFO.uiLibrary}\nBuild Date: ${APP_INFO.buildTime}`
+                        await copyToClipboard(versionInfo)
+                        addToast({
+                          title: 'Copied!',
+                          message: 'Complete app information copied to clipboard',
+                          type: 'success',
+                          duration: 2000
+                        })
+                      } catch (error) {
+                        addToast({
+                          title: 'Copy Failed',
+                          message: 'Failed to copy version information',
+                          type: 'error',
+                          duration: 3000
+                        })
+                      }
+                    }}
+                    className="p-1 h-6 w-6 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                    title="Copy complete app info"
+                  >
+                    📋
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Build Date</span>
+                <span className="text-sm text-zinc-900 dark:text-zinc-100">{APP_INFO.buildTime}</span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Build Type</span>
+                <span className="text-sm text-zinc-900 dark:text-zinc-100">{APP_INFO.buildType}</span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Database</span>
+                <span className="text-sm text-zinc-900 dark:text-zinc-100">{APP_INFO.database}</span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Framework</span>
+                <span className="text-sm text-zinc-900 dark:text-zinc-100">{APP_INFO.framework}</span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">UI Library</span>
+                <span className="text-sm text-zinc-900 dark:text-zinc-100">{APP_INFO.uiLibrary}</span>
+              </div>
+              
+              <div className="pt-3 border-t border-zinc-200 dark:border-zinc-700">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Update Status</span>
+                  <div className="flex items-center gap-2">
+                    {updateInfo ? (
+                      <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded-full">
+                        Update Available
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-2 py-1 rounded-full">
+                        Up to Date
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="pt-3 border-t border-zinc-200 dark:border-zinc-700">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Repository</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      // Open repository in default browser
+                      if (typeof window !== 'undefined' && 'open' in window) {
+                        window.open(APP_INFO.repository, '_blank')
+                      }
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1"
+                    title="Open repository"
+                  >
+                    GitHub ↗
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

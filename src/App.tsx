@@ -13,10 +13,42 @@ import KeyboardShortcutsHelp from '@/components/KeyboardShortcutsHelp'
 import { useTheme } from '@/hooks/useTheme'
 import { autoUpdater } from '@/utils/updater'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
-import { Input, ToastProvider } from '@/components/ui'
+import { Input, ToastProvider, useToast } from '@/components/ui'
 
 // Helper function to detect OS
 const isMac = typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
+
+// Auto-update checker component that can use the toast hook
+function AutoUpdateChecker() {
+  const { addToast } = useToast()
+
+  useEffect(() => {
+    const checkForUpdates = async () => {
+      try {
+        console.log('Checking for updates on app startup...')
+        const update = await autoUpdater.checkForUpdates()
+        if (update) {
+          console.log('Update available on startup:', update)
+          addToast({
+            title: 'Update Available',
+            message: `Version ${update.version} is available. Check Settings for details.`,
+            type: 'info',
+            duration: 8000
+          })
+        }
+      } catch (error) {
+        console.error('Failed to check for updates on startup:', error)
+        // Don't show error toast on startup to avoid annoying users
+      }
+    }
+
+    // Check for updates after a short delay to let the app fully load
+    const timer = setTimeout(checkForUpdates, 2000)
+    return () => clearTimeout(timer)
+  }, [addToast])
+
+  return null // This component doesn't render anything
+}
 
 export default function App(){
   const { dark, mode, setMode, extraTheme, setExtraTheme } = useTheme()
@@ -191,28 +223,9 @@ export default function App(){
     }
   }, [globalSearch, view, contextInfo])
 
-  // Check for updates when app starts
-  useEffect(() => {
-    const checkForUpdates = async () => {
-      try {
-        console.log('Checking for updates on app startup...')
-        const update = await autoUpdater.checkForUpdates()
-        if (update) {
-          console.log('Update available on startup:', update)
-          // You can add a notification here later
-        }
-      } catch (error) {
-        console.error('Failed to check for updates on startup:', error)
-      }
-    }
-
-    // Check for updates after a short delay to let the app fully load
-    const timer = setTimeout(checkForUpdates, 2000)
-    return () => clearTimeout(timer)
-  }, [])
-
   return (
     <ToastProvider>
+      <AutoUpdateChecker />
       <div className={`${dark ? 'dark' : ''} ${extraTheme ? `theme-${extraTheme}` : ''}`}>
         <div className="app-container min-h-screen bg-zinc-50 dark:bg-zinc-900">
                   {/* Mobile Navigation */}

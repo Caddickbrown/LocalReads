@@ -1,6 +1,6 @@
 {
   "name": "localreads-tauri",
-  "version": "1.5.0",
+  "version": "0.6.11",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,7 +11,9 @@
     "tauri:build": "tauri build",
     "build:web": "vite build",
     "build:tauri": "tauri build",
-    "postbuild:tauri": "node scripts/copy-assets.js"
+    "postbuild:tauri": "node scripts/copy-assets.js",
+    "version": "node scripts/update-version.js",
+    "release": "node scripts/release.js"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.6.0",
