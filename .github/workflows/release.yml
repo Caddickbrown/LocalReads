@@ -148,13 +148,17 @@ jobs:
           echo "✅ Tauri build completed successfully"
           
           echo "Checking build output:"
-          ls -la src-tauri/target/${{ matrix.target }}/release/
-          if [ -d "src-tauri/target/${{ matrix.target }}/release/bundle" ]; then
-            echo "Bundle directory created successfully:"
+          # Check both possible locations for the bundle
+          if [ -d "src-tauri/target/release/bundle" ]; then
+            echo "Bundle directory found in target/release/bundle:"
+            ls -la src-tauri/target/release/bundle/
+          elif [ -d "src-tauri/target/${{ matrix.target }}/release/bundle" ]; then
+            echo "Bundle directory found in target/${{ matrix.target }}/release/bundle:"
             ls -la src-tauri/target/${{ matrix.target }}/release/bundle/
           else
-            echo "❌ Bundle directory still missing after successful build!"
-            echo "This suggests Tauri v2 has different bundle behavior"
+            echo "❌ Bundle directory not found in either location!"
+            echo "Checking what exists:"
+            ls -la src-tauri/target/ || echo "No target directory found"
           fi
 
       # Debug: Check icon files and build artifacts
@@ -162,34 +166,62 @@ jobs:
       # Verify build artifacts exist
       - name: Verify build artifacts
         run: |
-          BUNDLE_PATH="src-tauri/target/${{ matrix.target }}/release/bundle"
-          if [ ! -d "$BUNDLE_PATH" ]; then
-            echo "❌ Bundle directory not found: $BUNDLE_PATH"
+          # Check both possible bundle locations
+          if [ -d "src-tauri/target/release/bundle" ]; then
+            BUNDLE_PATH="src-tauri/target/release/bundle"
+          elif [ -d "src-tauri/target/${{ matrix.target }}/release/bundle" ]; then
+            BUNDLE_PATH="src-tauri/target/${{ matrix.target }}/release/bundle"
+          else
+            echo "❌ Bundle directory not found in either location"
+            echo "Checking what exists:"
+            ls -la src-tauri/target/ || echo "No target directory found"
             exit 1
           fi
           
+          echo "Bundle directory contents:"
+          ls -la "$BUNDLE_PATH"
+          
+          # Find the actual bundle subdirectory
+          BUNDLE_SUBDIR=$(find "$BUNDLE_PATH" -maxdepth 1 -type d | head -n 1)
+          if [ -z "$BUNDLE_SUBDIR" ] || [ "$BUNDLE_SUBDIR" = "$BUNDLE_PATH" ]; then
+            echo "❌ No bundle subdirectory found in $BUNDLE_PATH"
+            exit 1
+          fi
+          
+          echo "Found bundle subdirectory: $BUNDLE_SUBDIR"
+          
+          # Check for common bundle file types
           if [ "${{ matrix.platform }}" == "macos-latest" ]; then
-            if [ -d "$BUNDLE_PATH/dmg" ] && [ "$(ls -A $BUNDLE_PATH/dmg/*.dmg 2>/dev/null)" ]; then
+            DMG_FILES=$(find "$BUNDLE_SUBDIR" -name "*.dmg" 2>/dev/null)
+            if [ -n "$DMG_FILES" ]; then
               echo "✅ DMG files found:"
-              ls -la $BUNDLE_PATH/dmg/*.dmg
+              echo "$DMG_FILES"
             else
-              echo "❌ No DMG files found in $BUNDLE_PATH/dmg"
+              echo "❌ No DMG files found in $BUNDLE_SUBDIR"
+              echo "Available files:"
+              find "$BUNDLE_SUBDIR" -type f 2>/dev/null || echo "No files found"
               exit 1
             fi
           elif [ "${{ matrix.platform }}" == "ubuntu-22.04" ]; then
-            if [ -d "$BUNDLE_PATH/appimage" ] && [ "$(ls -A $BUNDLE_PATH/appimage/*.AppImage 2>/dev/null)" ]; then
+            APPIMAGE_FILES=$(find "$BUNDLE_SUBDIR" -name "*.AppImage" 2>/dev/null)
+            if [ -n "$APPIMAGE_FILES" ]; then
               echo "✅ AppImage files found:"
-              ls -la $BUNDLE_PATH/appimage/*.AppImage
+              echo "$APPIMAGE_FILES"
             else
-              echo "❌ No AppImage files found in $BUNDLE_PATH/appimage"
+              echo "❌ No AppImage files found in $BUNDLE_SUBDIR"
+              echo "Available files:"
+              find "$BUNDLE_SUBDIR" -type f 2>/dev/null || echo "No files found"
               exit 1
             fi
           elif [ "${{ matrix.platform }}" == "windows-latest" ]; then
-            if [ -d "$BUNDLE_PATH/nsis" ] && [ "$(ls -A $BUNDLE_PATH/nsis/*.exe 2>/dev/null)" ]; then
+            EXE_FILES=$(find "$BUNDLE_SUBDIR" -name "*.exe" 2>/dev/null)
+            if [ -n "$EXE_FILES" ]; then
               echo "✅ EXE files found:"
-              ls -la $BUNDLE_PATH/nsis/*.exe
+              echo "$EXE_FILES"
             else
-              echo "❌ No EXE files found in $BUNDLE_PATH/nsis"
+              echo "❌ No EXE files found in $BUNDLE_SUBDIR"
+              echo "Available files:"
+              find "$BUNDLE_SUBDIR" -type f 2>/dev/null || echo "No files found"
               exit 1
             fi
           fi
@@ -245,8 +277,29 @@ jobs:
         run: |
           echo "Uploading assets to release..."
           
+          # Check both possible bundle locations
+          if [ -d "src-tauri/target/release/bundle" ]; then
+            BUNDLE_PATH="src-tauri/target/release/bundle"
+          elif [ -d "src-tauri/target/${{ matrix.target }}/release/bundle" ]; then
+            BUNDLE_PATH="src-tauri/target/${{ matrix.target }}/release/bundle"
+          else
+            echo "❌ Bundle directory not found in either location"
+            exit 1
+          fi
+          
+          echo "Found bundle directory: $BUNDLE_PATH"
+          
+          # Find the actual bundle subdirectory
+          BUNDLE_SUBDIR=$(find "$BUNDLE_PATH" -maxdepth 1 -type d | head -n 1)
+          if [ -z "$BUNDLE_SUBDIR" ] || [ "$BUNDLE_SUBDIR" = "$BUNDLE_PATH" ]; then
+            echo "❌ No bundle subdirectory found in $BUNDLE_PATH"
+            exit 1
+          fi
+          
+          echo "Found bundle subdirectory: $BUNDLE_SUBDIR"
+          
           if [ "${{ matrix.platform }}" == "macos-latest" ]; then
-            DMG_FILES=$(find src-tauri/target/${{ matrix.target }}/release/bundle/dmg -name "*.dmg" 2>/dev/null)
+            DMG_FILES=$(find "$BUNDLE_SUBDIR" -name "*.dmg" 2>/dev/null)
             if [ -n "$DMG_FILES" ]; then
               echo "Uploading DMG files: $DMG_FILES"
               for file in $DMG_FILES; do
@@ -254,9 +307,12 @@ jobs:
                   --repo ${{ github.repository }} \
                   --clobber
               done
+            else
+              echo "❌ No DMG files found to upload"
+              exit 1
             fi
           elif [ "${{ matrix.platform }}" == "ubuntu-22.04" ]; then
-            APPIMAGE_FILES=$(find src-tauri/target/${{ matrix.target }}/release/bundle/appimage -name "*.AppImage" 2>/dev/null)
+            APPIMAGE_FILES=$(find "$BUNDLE_SUBDIR" -name "*.AppImage" 2>/dev/null)
             if [ -n "$APPIMAGE_FILES" ]; then
               echo "Uploading AppImage files: $APPIMAGE_FILES"
               for file in $APPIMAGE_FILES; do
@@ -264,9 +320,12 @@ jobs:
                   --repo ${{ github.repository }} \
                   --clobber
               done
+            else
+              echo "❌ No AppImage files found to upload"
+              exit 1
             fi
           elif [ "${{ matrix.platform }}" == "windows-latest" ]; then
-            EXE_FILES=$(find src-tauri/target/${{ matrix.target }}/release/bundle/nsis -name "*.exe" 2>/dev/null)
+            EXE_FILES=$(find "$BUNDLE_SUBDIR" -name "*.exe" 2>/dev/null)
             if [ -n "$EXE_FILES" ]; then
               echo "Uploading EXE files: $EXE_FILES"
               for file in $EXE_FILES; do
@@ -274,7 +333,8 @@ jobs:
                   --repo ${{ github.repository }} \
                   --clobber
               done
+            else
+              echo "❌ No EXE files found to upload"
+              exit 1
             fi
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
