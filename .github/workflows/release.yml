@@ -137,7 +137,7 @@ jobs:
           
           echo "Starting Tauri build..."
           # Capture build output for debugging
-          if ! tauri build ${{ matrix.args }} --target ${{ matrix.target }} 2>&1 | tee tauri-build.log; then
+          if ! tauri build ${{ matrix.args }} 2>&1 | tee tauri-build.log; then
             echo "❌ Tauri build failed!"
             echo "Build log contents:"
             cat tauri-build.log
