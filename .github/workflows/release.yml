@@ -88,12 +88,29 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          # Tauri v2 uses webkit2gtk 4.1
+          # Tauri v2 uses webkit2gtk 4.1 and may need additional packages
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
             librsvg2-dev \
-            patchelf
+            patchelf \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            libssl-dev \
+            libc6-dev \
+            libx11-dev \
+            libxcb1-dev \
+            libxrandr-dev \
+            libxss-dev \
+            libasound2-dev \
+            libpulse-dev \
+            libdbus-1-dev \
+            libudev-dev \
+            libevdev-dev \
+            libinput-dev \
+            libxkbcommon-dev \
+            libxcb-render0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev
 
       - name: Install JS deps
         run: npm ci
@@ -107,72 +124,40 @@ jobs:
 
       # Build the application
       - name: Build Tauri application
-        run: tauri build ${{ matrix.args }}
-
-      # Copy frontend assets to app bundle (fixes Tauri v2 asset bundling issue)
-      - name: Copy frontend assets to app bundle
-        if: matrix.platform == 'macos-latest'
         run: |
-          echo "Copying frontend assets to app bundle..."
-          DIST_DIR="dist"
-          BUNDLE_DIR="src-tauri/target/${{ matrix.target }}/release/bundle/macos/LocalReads.app/Contents/Resources"
+          echo "Building Tauri application from $(pwd)"
+          echo "Dist directory contents before Tauri build:"
+          ls -la dist/
           
-          if [ -d "$DIST_DIR" ] && [ -d "$BUNDLE_DIR" ]; then
-            cp -r $DIST_DIR/* $BUNDLE_DIR/
-            echo "✅ Frontend assets copied successfully!"
-            ls -la $BUNDLE_DIR/
-          else
-            echo "❌ Dist or bundle directory not found"
-            echo "Dist exists: $(if [ -d "$DIST_DIR" ]; then echo "YES"; else echo "NO"; fi)"
-            echo "Bundle exists: $(if [ -d "$BUNDLE_DIR" ]; then echo "YES"; else echo "NO"; fi)"
+          echo "Tauri configuration check:"
+          cat src-tauri/tauri.conf.json
+          
+          echo "Rust target check:"
+          rustup target list --installed
+          
+          echo "Starting Tauri build..."
+          # Capture build output for debugging
+          if ! tauri build ${{ matrix.args }} --target ${{ matrix.target }} 2>&1 | tee tauri-build.log; then
+            echo "❌ Tauri build failed!"
+            echo "Build log contents:"
+            cat tauri-build.log
+            echo "Checking what was created:"
+            ls -la src-tauri/target/${{ matrix.target }}/release/ || echo "No release directory found"
             exit 1
           fi
-
-      # Copy frontend assets to app bundle for Linux
-      - name: Copy frontend assets to app bundle (Linux)
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          echo "Copying frontend assets to app bundle..."
-          DIST_DIR="dist"
-          BUNDLE_DIR="src-tauri/target/${{ matrix.target }}/release/bundle/appimage"
+          echo "✅ Tauri build completed successfully"
           
-          if [ -d "$DIST_DIR" ] && [ -d "$BUNDLE_DIR" ]; then
-            echo "Copying from $DIST_DIR to $BUNDLE_DIR"
-            cp -r $DIST_DIR/* $BUNDLE_DIR/
-            echo "✅ Frontend assets copied successfully!"
-            ls -la $BUNDLE_DIR/
+          echo "Checking build output:"
+          ls -la src-tauri/target/${{ matrix.target }}/release/
+          if [ -d "src-tauri/target/${{ matrix.target }}/release/bundle" ]; then
+            echo "Bundle directory created successfully:"
+            ls -la src-tauri/target/${{ matrix.target }}/release/bundle/
           else
-            echo "❌ Dist or bundle directory not found"
-            echo "Dist exists: $(if [ -d "$DIST_DIR" ]; then echo "YES"; else echo "NO"; fi)"
-            echo "Bundle exists: $(if [ -d "$BUNDLE_DIR" ]; then echo "YES"; else echo "NO"; fi)"
-            exit 1
+            echo "❌ Bundle directory still missing after successful build!"
+            echo "This suggests Tauri v2 has different bundle behavior"
           fi
 
-      # Copy frontend assets to app bundle for Windows
-      - name: Copy frontend assets to app bundle (Windows)
-        if: matrix.platform == 'windows-latest'
-        run: |
-          echo "Copying frontend assets to app bundle..."
-          $DIST_DIR = "dist"
-          $BUNDLE_DIR = "src-tauri/target/${{ matrix.target }}/release/bundle/nsis"
-          
-          if ((Test-Path $DIST_DIR) -and (Test-Path $BUNDLE_DIR)) {
-            echo "Copying from $DIST_DIR to $BUNDLE_DIR"
-            Copy-Item -Path "$DIST_DIR\*" -Destination $BUNDLE_DIR -Recurse -Force
-            echo "✅ Frontend assets copied successfully!"
-            Get-ChildItem $BUNDLE_DIR
-          } else {
-            echo "❌ Dist or bundle directory not found"
-            echo "Dist exists: $(if (Test-Path $DIST_DIR) { 'YES' } else { 'NO' })"
-            echo "Bundle exists: $(if (Test-Path $BUNDLE_DIR) { 'YES' } else { 'NO' })"
-            exit 1
-          }
-
-      # List build artifacts for debugging
-      - name: List build artifacts
-        run: |
-          echo "Build artifacts in src-tauri/target/${{ matrix.target }}/release/bundle/:"
-          find src-tauri/target/${{ matrix.target }}/release/bundle/ -type f 2>/dev/null || echo "No bundle directory found"
+      # Debug: Check icon files and build artifacts
 
       # Verify build artifacts exist
       - name: Verify build artifacts
