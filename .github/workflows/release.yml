@@ -50,7 +50,7 @@ jobs:
             target: x86_64-unknown-linux-gnu
             args: "--target x86_64-unknown-linux-gnu"
           # Linux ARM64 (Raspberry Pi 64-bit)
-          - platform: ubuntu-22.04-arm64
+          - platform: ubuntu-24.04-arm64
             target: aarch64-unknown-linux-gnu
             args: "--target aarch64-unknown-linux-gnu"
           # Windows
@@ -69,7 +69,7 @@ jobs:
           node-version: lts/*
           cache: npm
 
-      - name: Install Rust
+      - name: Install Rustå
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -81,7 +81,7 @@ jobs:
           cache-on-failure: true
 
       - name: Install Linux dependencies
-        if: startsWith(matrix.platform, 'ubuntu-22.04')
+        if: startsWith(matrix.platform, 'ubuntu-')
         run: |
           sudo apt-get update
           sudo apt-get install -y \
