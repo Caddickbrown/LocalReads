@@ -47,7 +47,8 @@ console.log(`🚀 Starting release process for version ${newVersion}...\n`);
 const files = [
   { path: 'src-tauri/tauri.conf.json', pattern: /"version":\s*"[^"]*"/, replacement: `"version": "${newVersion}"` },
   { path: 'package.json', pattern: /"version":\s*"[^"]*"/, replacement: `"version": "${newVersion}"` },
-  { path: 'src-tauri/Cargo.toml', pattern: /version\s*=\s*"[^"]*"/, replacement: `version = "${newVersion}"` }
+  { path: 'src-tauri/Cargo.toml', pattern: /version\s*=\s*"[^"]*"/, replacement: `version = "${newVersion}"` },
+  { path: 'src/components/Settings.tsx', pattern: /version: '[^']*'/, replacement: `version: '${newVersion}'`, useStringReplace: true }
 ];
 
 let updatedCount = 0;
@@ -57,7 +58,22 @@ console.log('📝 Updating version numbers...');
 files.forEach(file => {
   try {
     const content = fs.readFileSync(file.path, 'utf8');
-    const newContent = content.replace(file.pattern, file.replacement);
+    let newContent;
+    
+    if (file.useStringReplace) {
+      // Use simple string replacement for Settings.tsx
+      const currentVersion = content.match(/version:\s*'([^']*)'/)?.[1];
+      if (currentVersion) {
+        const searchStr = 'version: \'' + currentVersion + '\'';
+        const replaceStr = 'version: \'' + newVersion + '\'';
+        newContent = content.replace(searchStr, replaceStr);
+      } else {
+        newContent = content;
+      }
+    } else {
+      // Use regex replacement for other files
+      newContent = content.replace(file.pattern, file.replacement);
+    }
     
     if (content !== newContent) {
       fs.writeFileSync(file.path, newContent, 'utf8');
@@ -79,6 +95,42 @@ if (updatedCount === 0) {
 
 console.log(`\n✅ Successfully updated ${updatedCount} files to version ${newVersion}`);
 
+// Clear build cache
+console.log('\n🧹 Clearing build cache...');
+try {
+  // Remove common build directories
+  const buildDirs = ['dist/', 'build/', 'src-tauri/target/', '.tauri/'];
+  buildDirs.forEach(dir => {
+    if (fs.existsSync(dir)) {
+      fs.rmSync(dir, { recursive: true, force: true });
+      console.log(`✅ Removed ${dir}`);
+    }
+  });
+  
+  // Remove common cache files
+  const cacheFiles = ['.vite/', 'node_modules/.cache/', '*.tsbuildinfo'];
+  cacheFiles.forEach(pattern => {
+    if (pattern.includes('*')) {
+      // Handle glob patterns
+      const files = fs.readdirSync('.').filter(file => file.includes(pattern.replace('*', '')));
+      files.forEach(file => {
+        if (fs.existsSync(file)) {
+          fs.rmSync(file, { recursive: true, force: true });
+          console.log(`✅ Removed ${file}`);
+        }
+      });
+    } else if (fs.existsSync(pattern)) {
+      fs.rmSync(pattern, { recursive: true, force: true });
+      console.log(`✅ Removed ${pattern}`);
+    }
+  });
+  
+  console.log('✅ Build cache cleared successfully');
+} catch (error) {
+  console.warn(`⚠️  Warning: Some cache files could not be removed: ${error.message}`);
+  console.log('Continuing with release process...');
+}
+
 // Git operations
 try {
   console.log('\n🔧 Committing version changes...');
@@ -95,10 +147,11 @@ try {
   console.log(`\n🎉 Successfully released version ${newVersion}!`);
   console.log('\nWhat was done:');
   console.log(`1. ✅ Updated version numbers in ${updatedCount} files`);
-  console.log('2. ✅ Committed changes to git');
-  console.log(`3. ✅ Created git tag v${newVersion}`);
-  console.log('4. ✅ Pushed changes to remote repository');
-  console.log(`5. ✅ Pushed tag v${newVersion} to remote repository`);
+  console.log('2. ✅ Cleared build cache');
+  console.log('3. ✅ Committed changes to git');
+  console.log(`4. ✅ Created git tag v${newVersion}`);
+  console.log('5. ✅ Pushed changes to remote repository');
+  console.log(`6. ✅ Pushed tag v${newVersion} to remote repository`);
   
 } catch (error) {
   console.error('\n❌ Error during git operations:', error.message);

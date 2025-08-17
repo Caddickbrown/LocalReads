@@ -6,7 +6,7 @@ import path from 'path';
 const args = process.argv.slice(2);
 if (args.length === 0) {
   console.error('Usage: node scripts/update-version.js <new-version>');
-  console.error('Example: node scripts/update-version.js 0.6.11');
+  console.error('Example: node scripts/update-version.js 0.6.12');
   process.exit(1);
 }
 
@@ -14,14 +14,15 @@ const newVersion = args[0];
 
 // Validate version format (simple check)
 if (!/^\d+\.\d+\.\d+$/.test(newVersion)) {
-  console.error('Error: Version must be in format X.Y.Z (e.g., 0.6.11)');
+  console.error('Error: Version must be in format X.Y.Z (e.g., 0.6.12)');
   process.exit(1);
 }
 
 const files = [
   { path: 'src-tauri/tauri.conf.json', pattern: /"version":\s*"[^"]*"/, replacement: `"version": "${newVersion}"` },
   { path: 'package.json', pattern: /"version":\s*"[^"]*"/, replacement: `"version": "${newVersion}"` },
-  { path: 'src-tauri/Cargo.toml', pattern: /version\s*=\s*"[^"]*"/, replacement: `version = "${newVersion}"` }
+  { path: 'src-tauri/Cargo.toml', pattern: /version\s*=\s*"[^"]*"/, replacement: `version = "${newVersion}"` },
+  { path: 'src/components/Settings.tsx', pattern: /version: '[^']*'/, replacement: `version: '${newVersion}'`, useStringReplace: true }
 ];
 
 let updatedCount = 0;
@@ -29,7 +30,22 @@ let updatedCount = 0;
 files.forEach(file => {
   try {
     const content = fs.readFileSync(file.path, 'utf8');
-    const newContent = content.replace(file.pattern, file.replacement);
+    let newContent;
+    
+    if (file.useStringReplace) {
+      // Use simple string replacement for Settings.tsx
+      const currentVersion = content.match(/version:\s*'([^']*)'/)?.[1];
+      if (currentVersion) {
+        const searchStr = 'version: \'' + currentVersion + '\'';
+        const replaceStr = 'version: \'' + newVersion + '\'';
+        newContent = content.replace(searchStr, replaceStr);
+      } else {
+        newContent = content;
+      }
+    } else {
+      // Use regex replacement for other files
+      newContent = content.replace(file.pattern, file.replacement);
+    }
     
     if (content !== newContent) {
       fs.writeFileSync(file.path, newContent, 'utf8');
