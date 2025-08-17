@@ -182,48 +182,49 @@ jobs:
           ls -la "$BUNDLE_PATH"
           
           # Find the actual bundle subdirectory
-          BUNDLE_SUBDIR=$(find "$BUNDLE_PATH" -maxdepth 1 -type d | head -n 1)
-          if [ -z "$BUNDLE_SUBDIR" ] || [ "$BUNDLE_SUBDIR" = "$BUNDLE_PATH" ]; then
+          BUNDLE_SUBDIRS=$(find "$BUNDLE_PATH" -maxdepth 1 -type d | grep -v "^$BUNDLE_PATH$")
+          if [ -n "$BUNDLE_SUBDIRS" ]; then
+            BUNDLE_SUBDIR=$(echo "$BUNDLE_SUBDIRS" | head -n 1)
+            echo "Found bundle subdirectory: $BUNDLE_SUBDIR"
+            
+            # Check for common bundle file types
+            if [ "${{ matrix.platform }}" == "macos-latest" ]; then
+              DMG_FILES=$(find "$BUNDLE_SUBDIR" -name "*.dmg" 2>/dev/null)
+              if [ -n "$DMG_FILES" ]; then
+                echo "✅ DMG files found:"
+                echo "$DMG_FILES"
+              else
+                echo "❌ No DMG files found in $BUNDLE_SUBDIR"
+                echo "Available files:"
+                find "$BUNDLE_SUBDIR" -type f 2>/dev/null || echo "No files found"
+                exit 1
+              fi
+            elif [ "${{ matrix.platform }}" == "ubuntu-22.04" ]; then
+              APPIMAGE_FILES=$(find "$BUNDLE_SUBDIR" -name "*.AppImage" 2>/dev/null)
+              if [ -n "$APPIMAGE_FILES" ]; then
+                echo "✅ AppImage files found:"
+                echo "$APPIMAGE_FILES"
+              else
+                echo "❌ No AppImage files found in $BUNDLE_SUBDIR"
+                echo "Available files:"
+                find "$BUNDLE_SUBDIR" -type f 2>/dev/null || echo "No files found"
+                exit 1
+              fi
+            elif [ "${{ matrix.platform }}" == "windows-latest" ]; then
+              EXE_FILES=$(find "$BUNDLE_SUBDIR" -name "*.exe" 2>/dev/null)
+              if [ -n "$EXE_FILES" ]; then
+                echo "✅ EXE files found:"
+                echo "$EXE_FILES"
+              else
+                echo "❌ No EXE files found in $BUNDLE_SUBDIR"
+                echo "Available files:"
+                find "$BUNDLE_SUBDIR" -type f 2>/dev/null || echo "No files found"
+                exit 1
+              fi
+            fi
+          else
             echo "❌ No bundle subdirectory found in $BUNDLE_PATH"
             exit 1
-          fi
-          
-          echo "Found bundle subdirectory: $BUNDLE_SUBDIR"
-          
-          # Check for common bundle file types
-          if [ "${{ matrix.platform }}" == "macos-latest" ]; then
-            DMG_FILES=$(find "$BUNDLE_SUBDIR" -name "*.dmg" 2>/dev/null)
-            if [ -n "$DMG_FILES" ]; then
-              echo "✅ DMG files found:"
-              echo "$DMG_FILES"
-            else
-              echo "❌ No DMG files found in $BUNDLE_SUBDIR"
-              echo "Available files:"
-              find "$BUNDLE_SUBDIR" -type f 2>/dev/null || echo "No files found"
-              exit 1
-            fi
-          elif [ "${{ matrix.platform }}" == "ubuntu-22.04" ]; then
-            APPIMAGE_FILES=$(find "$BUNDLE_SUBDIR" -name "*.AppImage" 2>/dev/null)
-            if [ -n "$APPIMAGE_FILES" ]; then
-              echo "✅ AppImage files found:"
-              echo "$APPIMAGE_FILES"
-            else
-              echo "❌ No AppImage files found in $BUNDLE_SUBDIR"
-              echo "Available files:"
-              find "$BUNDLE_SUBDIR" -type f 2>/dev/null || echo "No files found"
-              exit 1
-            fi
-          elif [ "${{ matrix.platform }}" == "windows-latest" ]; then
-            EXE_FILES=$(find "$BUNDLE_SUBDIR" -name "*.exe" 2>/dev/null)
-            if [ -n "$EXE_FILES" ]; then
-              echo "✅ EXE files found:"
-              echo "$EXE_FILES"
-            else
-              echo "❌ No EXE files found in $BUNDLE_SUBDIR"
-              echo "Available files:"
-              find "$BUNDLE_SUBDIR" -type f 2>/dev/null || echo "No files found"
-              exit 1
-            fi
           fi
 
       # Clean up temporary files to prevent upload conflicts
