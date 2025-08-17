@@ -33,7 +33,7 @@ const generateReadsCsvTemplate = () => {
   const headers = ['id','book_id','title','author','start_date','end_date','rating','review','format','current_page','total_pages','progress_percentage']
   return headers.join(',') + '\n'
 }
-// import { autoUpdater } from '@/utils/updater'
+import { autoUpdater } from '@/utils/updater'
 
 import { ThemeMode, ExtraTheme } from '@/hooks/useTheme'
 import { getStoredDatePreference, setStoredDatePreference, StoredDatePreference } from '@/state/storage'
@@ -61,9 +61,8 @@ export default function Settings({
   const handleCheckUpdate = async () => {
     setIsChecking(true)
     try {
-      // const update = await autoUpdater.checkForUpdates()
-      // setUpdateInfo(update)
-      setUpdateInfo(null) // Temporary
+      const update = await autoUpdater.checkForUpdates()
+      setUpdateInfo(update)
     } catch (error) {
       console.error('Update check failed:', error)
     } finally {
@@ -73,8 +72,7 @@ export default function Settings({
 
   const handleInstallUpdate = async () => {
     try {
-      // await autoUpdater.installUpdate()
-      console.log('Update installation would happen here')
+      await autoUpdater.installUpdate()
     } catch (error) {
       console.error('Update installation failed:', error)
     }

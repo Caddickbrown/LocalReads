@@ -2,18 +2,14 @@
 // To avoid hard failures in web builds, resolve them dynamically at runtime.
 let checkUpdate: any
 let installUpdate: any
-let relaunch: any
 
 async function loadTauriUpdater() {
   if (typeof window === 'undefined' || !(window as any).__TAURI_INTERNALS__) return false
   try {
     // @ts-ignore - runtime loaded
-    const updater = await import('@tauri-apps/api/updater')
-    // @ts-ignore - runtime loaded
-    const processApi = await import('@tauri-apps/api/process')
+    const updater = await import('@tauri-apps/plugin-updater')
     checkUpdate = updater.checkUpdate
     installUpdate = updater.installUpdate
-    relaunch = processApi.relaunch
     return true
   } catch {
     return false
@@ -47,9 +43,13 @@ export class AutoUpdater {
       this.isChecking = true
       const ready = await loadTauriUpdater()
       if (!ready) {
+        console.log('Tauri updater not available')
         return null
       }
+      
+      console.log('Checking for updates...')
       const update = await checkUpdate()
+      console.log('Update check result:', update)
       
       if (update.available) {
         this.updateAvailable = {
@@ -57,10 +57,12 @@ export class AutoUpdater {
           date: update.manifest?.date || new Date().toISOString(),
           body: update.manifest?.body || 'Update available'
         }
+        console.log('Update available:', this.updateAvailable)
         return this.updateAvailable
       }
       
       this.updateAvailable = null
+      console.log('No updates available')
       return null
     } catch (error) {
       console.error('Failed to check for updates:', error)
@@ -72,14 +74,18 @@ export class AutoUpdater {
 
   async installUpdate(): Promise<boolean> {
     if (!this.updateAvailable) {
+      console.log('No update available to install')
       return false
     }
 
     try {
       const ready = await loadTauriUpdater()
       if (!ready) return false
+      
+      console.log('Installing update...')
       await installUpdate()
-      await relaunch()
+      console.log('Update installed successfully')
+      // Note: In Tauri 2.0, the app will automatically restart after update installation
       return true
     } catch (error) {
       console.error('Failed to install update:', error)

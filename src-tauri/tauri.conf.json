@@ -40,6 +40,14 @@
         "path": "App",
         "load": true
       }
+    },
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://api.github.com/repos/Caddickbrown/LocalReads/releases/latest"
+      ],
+      "dialog": true,
+      "pubkey": ""
     }
   }
 }

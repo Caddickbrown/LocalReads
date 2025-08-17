@@ -11,6 +11,7 @@ import Series from '@/components/Series'
 import KeyboardShortcutsHelp from '@/components/KeyboardShortcutsHelp'
 // import UpdateNotification from '@/components/UpdateNotification'
 import { useTheme } from '@/hooks/useTheme'
+import { autoUpdater } from '@/utils/updater'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { Input, ToastProvider } from '@/components/ui'
 
@@ -189,6 +190,26 @@ export default function App(){
       setContextInfo('')
     }
   }, [globalSearch, view, contextInfo])
+
+  // Check for updates when app starts
+  useEffect(() => {
+    const checkForUpdates = async () => {
+      try {
+        console.log('Checking for updates on app startup...')
+        const update = await autoUpdater.checkForUpdates()
+        if (update) {
+          console.log('Update available on startup:', update)
+          // You can add a notification here later
+        }
+      } catch (error) {
+        console.error('Failed to check for updates on startup:', error)
+      }
+    }
+
+    // Check for updates after a short delay to let the app fully load
+    const timer = setTimeout(checkForUpdates, 2000)
+    return () => clearTimeout(timer)
+  }, [])
 
   return (
     <ToastProvider>
