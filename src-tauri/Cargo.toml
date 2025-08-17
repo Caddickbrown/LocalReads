@@ -17,5 +17,4 @@ tauri-plugin-opener = { version = "^2.0.0" }
 tauri-plugin-clipboard-manager = { version = "^2.0.0" }
 
 [features]
-default = ["custom-protocol"]
-custom-protocol = ["tauri/custom-protocol"]
+default = []

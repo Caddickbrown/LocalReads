@@ -10,7 +10,8 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "build:web": "vite build",
-    "build:tauri": "tauri build"
+    "build:tauri": "tauri build",
+    "postbuild:tauri": "node scripts/copy-assets.js"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.6.0",

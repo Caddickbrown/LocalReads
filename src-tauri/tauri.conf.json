@@ -4,7 +4,7 @@
   "productName": "LocalReads",
   "version": "1.5.0",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run build",
     "beforeBuildCommand": "npm run build",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
@@ -20,8 +20,7 @@
         "fullscreen": false,
         "resizable": true,
         "width": 1200,
-        "height": 800,
-        "devtools": true
+        "height": 800
       }
     ]
   },
@@ -33,7 +32,6 @@
       "icons/icon.ico"
     ]
   },
-
   "plugins": {
     "sql": {
       "default": {
