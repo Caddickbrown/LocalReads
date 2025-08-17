@@ -8,7 +8,7 @@ import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs'
 // App information constants
 const APP_INFO = {
   name: 'LocalReads',
-  version: '0.6.13', // This will be updated by the release script
+  version: '0.6.14', // This will be updated by the release script
   identifier: 'app.localreads',
   buildType: 'Tauri Desktop App',
   database: 'SQLite',
