@@ -187,65 +187,10 @@ async function initDatabase() {
   // Ensure highlights schema supports standalone gems (Windows fresh DBs may lack these columns)
   await ensureHighlightsSchemaUpToDate()
   
-  // Check if database is empty and add sample data
-  try {
-    const bookCount = await db.select('SELECT COUNT(*) as count FROM books') as any[]
-    if (bookCount.length > 0 && bookCount[0].count === 0) {
-      console.log('Database is empty, adding sample data...')
-      await addSampleData(db)
-    }
-  } catch (error) {
-    console.warn('Could not check/add sample data:', error)
-  }
+
 }
 
-async function addSampleData(db: Database) {
-  try {
-    // Add sample books
-    await db.execute(`
-      INSERT INTO books (id, title, author, series_name, series_number, obtained, type, status) VALUES
-      ('book1', 'The Name of the Wind', 'Patrick Rothfuss', 'The Kingkiller Chronicle', 1, 'Owned', 'Book', 'Finished'),
-      ('book2', 'Project Hail Mary', 'Andy Weir', NULL, NULL, 'Library', 'Audiobook', 'Finished'),
-      ('book3', 'The Pragmatic Programmer', 'Andrew Hunt, David Thomas', NULL, NULL, 'Owned', 'Ebook', 'To Read'),
-      ('book4', 'Atomic Habits', 'James Clear', NULL, NULL, 'Wishlist', 'Book', 'To Read'),
-      ('book5', 'Dune', 'Frank Herbert', NULL, NULL, 'Borrowed', 'Book', 'Finished')
-    `)
-    
-    // Add sample tags
-    await db.execute(`
-      INSERT INTO tags (id, name) VALUES
-      (1, 'fantasy'),
-      (2, 'sci-fi'),
-      (3, 'non-fiction'),
-      (4, 'dev'),
-      (5, 'self-help'),
-      (6, 'classic'),
-      (7, 'favourites')
-    `)
-    
-    // Add sample book-tag relationships
-    await db.execute(`
-      INSERT INTO book_tags (book_id, tag_id) VALUES
-      ('book1', 1), ('book1', 7),
-      ('book2', 2),
-      ('book3', 3), ('book3', 4),
-      ('book4', 3), ('book4', 5),
-      ('book5', 2), ('book5', 6)
-    `)
-    
-    // Add sample reads
-    await db.execute(`
-      INSERT INTO reads (id, book_id, start_date, end_date, rating) VALUES
-      ('read1', 'book1', '2023-01-15', '2023-02-20', 5),
-      ('read2', 'book2', '2023-03-10', '2023-04-05', 4),
-      ('read5', 'book5', '2023-05-01', '2023-06-15', 5)
-    `)
-    
-    console.log('Sample data added successfully')
-  } catch (error) {
-    console.error('Failed to add sample data:', error)
-  }
-}
+
 
 export async function execSchema(sql: string) {
   const db = await getDb()
