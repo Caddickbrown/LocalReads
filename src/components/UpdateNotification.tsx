@@ -13,10 +13,15 @@ export default function UpdateNotification({ onClose }: UpdateNotificationProps)
 
   useEffect(() => {
     const checkUpdates = async () => {
+      console.log('🔍 UpdateNotification: Auto-checking for updates...')
       const update = await autoUpdater.checkForUpdates()
+      console.log('🔍 UpdateNotification: Auto-check result:', update)
       if (update) {
+        console.log('✅ UpdateNotification: Update found, setting visible')
         setUpdateInfo(update)
         setIsVisible(true)
+      } else {
+        console.log('ℹ️ UpdateNotification: No update found')
       }
     }
 
@@ -30,11 +35,14 @@ export default function UpdateNotification({ onClose }: UpdateNotificationProps)
   }, [])
 
   const handleInstall = async () => {
+    console.log('🔍 UpdateNotification: Install update triggered')
     setIsInstalling(true)
     try {
+      console.log('🔍 UpdateNotification: Calling autoUpdater.installUpdate()')
       await autoUpdater.installUpdate()
+      console.log('✅ UpdateNotification: Update installation completed')
     } catch (error) {
-      console.error('Update failed:', error)
+      console.error('❌ UpdateNotification: Update failed:', error)
       setIsInstalling(false)
     }
   }

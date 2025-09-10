@@ -4,14 +4,30 @@ let checkUpdate: any
 let installUpdate: any
 
 async function loadTauriUpdater() {
-  if (typeof window === 'undefined' || !(window as any).__TAURI_INTERNALS__) return false
+  console.log('🔍 Loading Tauri updater...')
+  console.log('Window available:', typeof window !== 'undefined')
+  console.log('Tauri internals available:', !!(window as any).__TAURI_INTERNALS__)
+  
+  if (typeof window === 'undefined') {
+    console.log('❌ Window not available')
+    return false
+  }
+  
+  if (!(window as any).__TAURI_INTERNALS__) {
+    console.log('❌ Tauri internals not available')
+    return false
+  }
+  
   try {
     // @ts-ignore - runtime loaded
     const updater = await import('@tauri-apps/plugin-updater')
+    console.log('✅ Updater plugin loaded:', updater)
+    console.log('Available functions:', Object.keys(updater))
     checkUpdate = updater.checkUpdate
     installUpdate = updater.installUpdate
     return true
-  } catch {
+  } catch (error) {
+    console.error('❌ Failed to load updater plugin:', error)
     return false
   }
 }
@@ -35,21 +51,25 @@ export class AutoUpdater {
   }
 
   async checkForUpdates(): Promise<UpdateInfo | null> {
+    console.log('🔄 Starting update check...')
+    
     if (this.isChecking) {
+      console.log('⚠️ Update check already in progress')
       return this.updateAvailable
     }
 
     try {
       this.isChecking = true
+      console.log('🔧 Loading Tauri updater...')
       const ready = await loadTauriUpdater()
       if (!ready) {
-        console.log('Tauri updater not available')
+        console.log('❌ Tauri updater not available')
         return null
       }
       
-      console.log('Checking for updates...')
+      console.log('🔍 Calling checkUpdate()...')
       const update = await checkUpdate()
-      console.log('Update check result:', update)
+      console.log('📊 Update check result:', update)
       
       if (update.available) {
         this.updateAvailable = {
@@ -57,15 +77,15 @@ export class AutoUpdater {
           date: update.manifest?.date || new Date().toISOString(),
           body: update.manifest?.body || 'Update available'
         }
-        console.log('Update available:', this.updateAvailable)
+        console.log('✅ Update available:', this.updateAvailable)
         return this.updateAvailable
       }
       
       this.updateAvailable = null
-      console.log('No updates available')
+      console.log('ℹ️ No updates available')
       return null
     } catch (error) {
-      console.error('Failed to check for updates:', error)
+      console.error('❌ Failed to check for updates:', error)
       return null
     } finally {
       this.isChecking = false
@@ -74,7 +94,7 @@ export class AutoUpdater {
 
   async installUpdate(): Promise<boolean> {
     if (!this.updateAvailable) {
-      console.log('No update available to install')
+      console.log('❌ No update available to install')
       return false
     }
 
@@ -82,13 +102,13 @@ export class AutoUpdater {
       const ready = await loadTauriUpdater()
       if (!ready) return false
       
-      console.log('Installing update...')
+      console.log('📥 Installing update...')
       await installUpdate()
-      console.log('Update installed successfully')
+      console.log('✅ Update installed successfully')
       // Note: In Tauri 2.0, the app will automatically restart after update installation
       return true
     } catch (error) {
-      console.error('Failed to install update:', error)
+      console.error('❌ Failed to install update:', error)
       return false
     }
   }

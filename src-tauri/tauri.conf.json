@@ -44,10 +44,13 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "https://api.github.com/repos/Caddickbrown/LocalReads/releases/latest"
+        "http://localhost:1420/updates.json"
       ],
       "dialog": true,
-      "pubkey": ""
+      "pubkey": "",
+      "headers": {
+        "User-Agent": "LocalReads-Updater/0.6.14"
+      }
     }
   }
 }

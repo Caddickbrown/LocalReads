@@ -1,0 +1,23 @@
+{
+  "version": "0.6.14",
+  "notes": "Test update for LocalReads v0.6.14",
+  "pub_date": "2025-01-17T12:00:00Z",
+  "platforms": {
+    "darwin-aarch64": {
+      "signature": "",
+      "url": "https://github.com/Caddickbrown/LocalReads/releases/download/v0.6.14/LocalReads_0.6.14_aarch64.dmg"
+    },
+    "darwin-x86_64": {
+      "signature": "",
+      "url": "https://github.com/Caddickbrown/LocalReads/releases/download/v0.6.14/LocalReads_0.6.14_x64.dmg"
+    },
+    "linux-x86_64": {
+      "signature": "",
+      "url": "https://github.com/Caddickbrown/LocalReads/releases/download/v0.6.14/LocalReads_0.6.14_x64.AppImage"
+    },
+    "windows-x86_64": {
+      "signature": "",
+      "url": "https://github.com/Caddickbrown/LocalReads/releases/download/v0.6.14/LocalReads_0.6.14_x64-setup.exe"
+    }
+  }
+}

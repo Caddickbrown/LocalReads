@@ -74,11 +74,16 @@ export default function Settings({
   const { addToast } = useToast()
 
   const handleCheckUpdate = async () => {
+    console.log('🔍 Settings: Update check triggered')
     setIsChecking(true)
     try {
+      console.log('🔍 Settings: Calling autoUpdater.checkForUpdates()')
       const update = await autoUpdater.checkForUpdates()
+      console.log('🔍 Settings: Update check result:', update)
+      
       if (update) {
         setUpdateInfo(update)
+        console.log('✅ Settings: Update available, setting update info')
         addToast({
           title: 'Update Available',
           message: `Version ${update.version} is available for download`,
@@ -86,6 +91,7 @@ export default function Settings({
           duration: 5000
         })
       } else {
+        console.log('ℹ️ Settings: No update available')
         addToast({
           title: 'Up to Date',
           message: 'You have the latest version installed',
@@ -94,7 +100,7 @@ export default function Settings({
         })
       }
     } catch (error) {
-      console.error('Update check failed:', error)
+      console.error('❌ Settings: Update check failed:', error)
       addToast({
         title: 'Update Check Failed',
         message: 'Failed to check for updates. Please try again.',
@@ -107,6 +113,7 @@ export default function Settings({
   }
 
   const handleInstallUpdate = async () => {
+    console.log('🔍 Settings: Update installation triggered')
     try {
       addToast({
         title: 'Installing Update',
@@ -115,7 +122,9 @@ export default function Settings({
         duration: Infinity
       })
       
+      console.log('🔍 Settings: Calling autoUpdater.installUpdate()')
       await autoUpdater.installUpdate()
+      console.log('✅ Settings: Update installation completed')
       
       // Note: The app will restart after installation, so this toast won't be visible
       // But we'll show it briefly in case there's a delay
@@ -126,7 +135,7 @@ export default function Settings({
         duration: 2000
       })
     } catch (error) {
-      console.error('Update installation failed:', error)
+      console.error('❌ Settings: Update installation failed:', error)
       addToast({
         title: 'Installation Failed',
         message: 'Failed to install the update. Please try again.',
