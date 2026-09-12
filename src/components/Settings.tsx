@@ -177,33 +177,48 @@ export default function Settings({
 
   return (
     <ModalBackdrop onClick={onBack}>
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <SettingsIcon className="w-6 h-6 text-indigo-600" />
-            <h2 className="text-heading-2">Settings</h2>
+      <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden border border-zinc-200/50 dark:border-zinc-700/50" onClick={(e) => e.stopPropagation()}>
+        {/* Enhanced Header */}
+        <div className="relative p-8 border-b border-zinc-200/70 dark:border-zinc-700/70 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-zinc-800 dark:to-zinc-900">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl">
+                <SettingsIcon className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Settings</h2>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Customize your LocalReads experience</p>
+              </div>
+            </div>
+            <Button 
+              variant="ghost" 
+              onClick={onBack} 
+              className="p-3 hover:bg-white/60 dark:hover:bg-zinc-800/60 rounded-xl transition-all duration-200"
+            >
+              <X className="w-5 h-5" />
+            </Button>
           </div>
-          <Button variant="ghost" onClick={onBack} className="p-2">
-            <X className="w-5 h-5" />
-          </Button>
         </div>
         
-        <div className="overflow-y-auto max-h-[75vh]">
-          <Card className="border-0 rounded-none shadow-none">
-      <CardContent>
-        <div className="space-y-8">
+        <div className="overflow-y-auto max-h-[76vh] bg-zinc-50/30 dark:bg-zinc-900/30">
+          <div className="p-8">
+            <div className="space-y-10">
           {/* Theme Settings */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">🌗</span>
-              <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Appearance</h3>
+          <div className="bg-white dark:bg-zinc-800/50 rounded-2xl p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-xl">
+                <span className="text-lg">🌗</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Appearance</h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">Choose your preferred appearance and color scheme</p>
+              </div>
             </div>
-            <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">Choose your preferred appearance and color scheme</div>
             
             {/* Dark Mode */}
-            <div className="mb-6">
-              <div className="text-sm font-medium mb-2 text-zinc-700 dark:text-zinc-300">Theme Mode</div>
-              <div className="flex gap-1 p-0.5 bg-zinc-100 dark:bg-gray-800 rounded-lg overflow-hidden w-fit">
+            <div className="mb-8">
+              <div className="text-sm font-medium mb-4 text-zinc-700 dark:text-zinc-300">Theme Mode</div>
+              <div className="flex gap-2 p-1 bg-zinc-100 dark:bg-zinc-700 rounded-xl overflow-hidden w-fit shadow-inner">
                 <ModeButton
                   selected={mode === 'light'}
                   onClick={() => setMode('light')}
@@ -227,8 +242,8 @@ export default function Settings({
 
             {/* Color Themes */}
             <div>
-              <div className="text-sm font-medium mb-2 text-zinc-700 dark:text-zinc-300">Color Themes</div>
-              <div className="flex flex-wrap gap-1 p-0.5 bg-zinc-100 dark:bg-gray-800 rounded-lg w-fit">
+              <div className="text-sm font-medium mb-4 text-zinc-700 dark:text-zinc-300">Color Themes</div>
+              <div className="flex flex-wrap gap-2 p-1 bg-zinc-100 dark:bg-zinc-700 rounded-xl w-fit shadow-inner">
                 <ThemeButton
                   selected={extraTheme === null}
                   onClick={() => setExtraTheme(null)}
@@ -297,13 +312,17 @@ export default function Settings({
           </div>
 
           {/* Date Format Settings */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">📅</span>
-              <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Date Format</h3>
+          <div className="bg-white dark:bg-zinc-800/50 rounded-2xl p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                <span className="text-lg">📅</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Date Format</h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">Used when importing CSVs to interpret ambiguous dates</p>
+              </div>
             </div>
-            <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">Used when importing CSVs to interpret ambiguous dates</div>
-            <div className="flex gap-1 p-0.5 bg-zinc-100 dark:bg-gray-800 rounded-lg overflow-hidden w-fit">
+            <div className="flex gap-2 p-1 bg-zinc-100 dark:bg-zinc-700 rounded-xl overflow-hidden w-fit shadow-inner">
               {([
                 { key: 'auto', label: 'Auto' },
                 { key: 'YMD', label: 'YYYY-MM-DD' },
@@ -322,12 +341,16 @@ export default function Settings({
           </div>
 
           {/* Updates Section */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">🔄</span>
-              <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Updates</h3>
+          <div className="bg-white dark:bg-zinc-800/50 rounded-2xl p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-xl">
+                <span className="text-lg">🔄</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Updates</h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">Check for and install application updates</p>
+              </div>
             </div>
-            <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">Check for and install application updates</div>
             <div className="space-y-3">
               <Button 
                 onClick={handleCheckUpdate} 
@@ -369,12 +392,16 @@ export default function Settings({
           </div>
 
           {/* Database Section */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">🗄️</span>
-              <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Database</h3>
+          <div className="bg-white dark:bg-zinc-800/50 rounded-2xl p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
+                <span className="text-lg">🗄️</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Database</h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">Manage your database location and settings</p>
+              </div>
             </div>
-            <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">Manage your database location and settings</div>
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-xs">
                 <Button
@@ -498,12 +525,16 @@ export default function Settings({
           </div>
 
           {/* Import/Export Section */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">📥📤</span>
-              <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Import & Export</h3>
+          <div className="bg-white dark:bg-zinc-800/50 rounded-2xl p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-xl">
+                <span className="text-lg">📥📤</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Import & Export</h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">Manage your data with CSV and JSON formats</p>
+              </div>
             </div>
-            <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">Manage your data with CSV and JSON formats</div>
             
             {/* Books Section */}
             <div className="mb-6">
@@ -820,12 +851,16 @@ export default function Settings({
           </div>
 
           {/* Data Cleanup Section */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">🧹</span>
-              <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Data Cleanup</h3>
+          <div className="bg-white dark:bg-zinc-800/50 rounded-2xl p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2 bg-rose-100 dark:bg-rose-900/30 rounded-xl">
+                <span className="text-lg">🧹</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Data Cleanup</h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">Find and resolve data inconsistencies</p>
+              </div>
             </div>
-            <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">Find and resolve data inconsistencies</div>
             <div className="flex flex-wrap gap-2">
               <Button
                 onClick={() => {
@@ -855,12 +890,16 @@ export default function Settings({
           </div>
 
           {/* App Information */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">ℹ️</span>
-              <h3 className="text-base font-semibold text-zinc-900 dark:text-white">App Information</h3>
+          <div className="bg-white dark:bg-zinc-800/50 rounded-2xl p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-xl">
+                <span className="text-lg">ℹ️</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">App Information</h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">Version details and application information</p>
+              </div>
             </div>
-            <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">Version details and application information</div>
             
             <div className="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-4 space-y-3">
               <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
@@ -974,9 +1013,8 @@ export default function Settings({
               </div>
             </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+            </div>
+          </div>
         </div>
       </div>
     </ModalBackdrop>
@@ -991,16 +1029,16 @@ function ModeButton({ selected, onClick, icon, label }: {
 }) {
   return (
     <button
-      className={`flex flex-col items-center gap-1 p-2 rounded-md transition-all duration-300 min-w-20 max-w-20 flex-shrink-0 settings-button-fixed ${
+      className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-300 min-w-20 max-w-20 flex-shrink-0 ${
         selected
-          ? 'bg-white dark:bg-zinc-600 shadow-md text-indigo-600 dark:text-white font-medium border border-indigo-200 dark:border-zinc-500'
-          : 'hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:text-zinc-800 dark:hover:text-white'
+          ? 'bg-white dark:bg-zinc-600 shadow-lg text-indigo-600 dark:text-white font-semibold border-2 border-indigo-300 dark:border-zinc-500 transform scale-105'
+          : 'hover:bg-white/60 dark:hover:bg-zinc-600/60 text-zinc-600 dark:text-zinc-300 hover:text-zinc-800 dark:hover:text-white hover:scale-102'
       }`}
-      style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}
+      style={{ width: '88px', minWidth: '88px', maxWidth: '88px' }}
       onClick={onClick}
     >
-      <span className="text-sm">{icon}</span>
-      <span className="text-xs font-medium">{label}</span>
+      <span className="text-lg">{icon}</span>
+      <span className="text-xs font-medium leading-tight">{label}</span>
     </button>
   )
 }
@@ -1013,16 +1051,16 @@ function DateFormatButton({ selected, onClick, icon, label }: {
 }) {
   return (
     <button
-      className={`flex flex-col items-center gap-1 p-2 rounded-md transition-all duration-300 min-w-24 max-w-24 flex-shrink-0 date-format-button-fixed ${
+      className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-300 min-w-24 max-w-24 flex-shrink-0 ${
         selected
-          ? 'bg-white dark:bg-zinc-600 shadow-md text-indigo-600 dark:text-white font-medium border border-indigo-200 dark:border-zinc-500'
-          : 'hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:text-zinc-800 dark:hover:text-white'
+          ? 'bg-white dark:bg-zinc-600 shadow-lg text-indigo-600 dark:text-white font-semibold border-2 border-indigo-300 dark:border-zinc-500 transform scale-105'
+          : 'hover:bg-white/60 dark:hover:bg-zinc-600/60 text-zinc-600 dark:text-zinc-300 hover:text-zinc-800 dark:hover:text-white hover:scale-102'
       }`}
-      style={{ width: '100px', minWidth: '100px', maxWidth: '100px' }}
+      style={{ width: '110px', minWidth: '110px', maxWidth: '110px' }}
       onClick={onClick}
     >
-      <span className="text-sm">{icon}</span>
-      <span className="text-xs font-medium">{label}</span>
+      <span className="text-lg">{icon}</span>
+      <span className="text-xs font-medium leading-tight text-center">{label}</span>
     </button>
   )
 }
@@ -1036,25 +1074,25 @@ function ThemeButton({ selected, onClick, emoji, label, colors }: {
 }) {
   return (
     <button
-      className={`flex flex-col items-center gap-1 p-2 rounded-md transition-all duration-300 min-w-20 max-w-20 flex-shrink-0 settings-button-fixed ${
+      className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-300 min-w-20 max-w-20 flex-shrink-0 ${
         selected
-          ? 'bg-white dark:bg-zinc-600 shadow-md text-indigo-600 dark:text-white font-medium border border-indigo-200 dark:border-zinc-500'
-          : 'hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:text-zinc-800 dark:hover:text-white'
+          ? 'bg-white dark:bg-zinc-600 shadow-lg text-indigo-600 dark:text-white font-semibold border-2 border-indigo-300 dark:border-zinc-500 transform scale-105'
+          : 'hover:bg-white/60 dark:hover:bg-zinc-600/60 text-zinc-600 dark:text-zinc-300 hover:text-zinc-800 dark:hover:text-white hover:scale-102'
       }`}
-      style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}
+      style={{ width: '88px', minWidth: '88px', maxWidth: '88px' }}
       onClick={onClick}
     >
-      <span className="text-sm">{emoji}</span>
-      <div className="flex gap-0.5 mb-0.5">
+      <span className="text-lg">{emoji}</span>
+      <div className="flex gap-1 mb-1">
         {colors.map((color, index) => (
           <div
             key={index}
-            className="w-1.5 h-1.5 rounded-full border border-white dark:border-zinc-800"
+            className="w-2 h-2 rounded-full border border-white dark:border-zinc-700 shadow-sm"
             style={{ backgroundColor: color }}
           />
         ))}
       </div>
-      <span className="text-xs font-medium leading-tight">{label}</span>
+      <span className="text-xs font-medium leading-tight text-center">{label}</span>
     </button>
   )
 }
